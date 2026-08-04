@@ -13,12 +13,13 @@ from .models import Ticket, TicketStatus
 class TicketRepository(Protocol):
     async def create(self, ticket: Ticket) -> Ticket: ...
 
-    async def get(self, ticket_id: UUID) -> Ticket | None: ...
+    async def get(self, tenant_id: str, ticket_id: UUID) -> Ticket | None: ...
 
     async def list_for_tenant(self, tenant_id: str) -> Sequence[Ticket]: ...
 
     async def set_status(
         self,
+        tenant_id: str,
         ticket_id: UUID,
         status: TicketStatus,
         expected_version: int,
@@ -37,9 +38,12 @@ class InMemoryTicketRepository:
             self._tickets[ticket.id] = ticket
             return ticket
 
-    async def get(self, ticket_id: UUID) -> Ticket | None:
+    async def get(self, tenant_id: str, ticket_id: UUID) -> Ticket | None:
         async with self._lock:
-            return self._tickets.get(ticket_id)
+            ticket = self._tickets.get(ticket_id)
+            if ticket is None or ticket.tenant_id != tenant_id:
+                return None
+            return ticket
 
     async def list_for_tenant(self, tenant_id: str) -> Sequence[Ticket]:
         async with self._lock:
@@ -48,13 +52,14 @@ class InMemoryTicketRepository:
 
     async def set_status(
         self,
+        tenant_id: str,
         ticket_id: UUID,
         status: TicketStatus,
         expected_version: int,
     ) -> Ticket | None:
         async with self._lock:
             current = self._tickets.get(ticket_id)
-            if current is None:
+            if current is None or current.tenant_id != tenant_id:
                 return None
             if current.version != expected_version:
                 raise TicketVersionConflict(

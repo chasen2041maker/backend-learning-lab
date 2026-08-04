@@ -57,4 +57,4 @@
 
 ## 完成顺序
 
-按照 [里程碑](milestones.md) 逐步实现。每个里程碑必须满足 [验收清单](acceptance.md)，不要一次让 AI 生成整个项目。
+先按 [分阶段交付](phases.md) 控制每次范围，再用 [里程碑](milestones.md) 跟踪工程能力。每个阶段必须满足 [验收清单](acceptance.md)，不要一次让 AI 生成整个项目。

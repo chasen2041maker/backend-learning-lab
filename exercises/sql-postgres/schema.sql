@@ -9,7 +9,10 @@ CREATE TABLE IF NOT EXISTS tenants (
 CREATE TABLE IF NOT EXISTS tickets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id text NOT NULL REFERENCES tenants(id),
-    title text NOT NULL CHECK (length(title) BETWEEN 1 AND 200),
+    title text NOT NULL CHECK (
+        title = btrim(title)
+        AND length(title) BETWEEN 1 AND 200
+    ),
     status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
     priority text NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high')),
     version bigint NOT NULL DEFAULT 1 CHECK (version > 0),
@@ -60,12 +63,17 @@ CREATE TABLE IF NOT EXISTS outbox_events (
     published_at timestamptz,
     attempts integer NOT NULL DEFAULT 0 CHECK (attempts >= 0),
     next_attempt_at timestamptz NOT NULL DEFAULT now(),
-    last_error text
+    last_error text,
+    locked_by text,
+    locked_until timestamptz,
+    lease_token bigint NOT NULL DEFAULT 0 CHECK (lease_token >= 0),
+    dead_lettered_at timestamptz,
+    CHECK (published_at IS NULL OR dead_lettered_at IS NULL)
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbox_unpublished
     ON outbox_events (next_attempt_at, created_at)
-    WHERE published_at IS NULL;
+    WHERE published_at IS NULL AND dead_lettered_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS processed_events (
     consumer_name text NOT NULL,

@@ -7,6 +7,10 @@ class DomainError(Exception):
     code = "domain_error"
 
 
+class AuthenticationRequired(DomainError):
+    code = "authentication_required"
+
+
 class TicketNotFound(DomainError):
     code = "ticket_not_found"
 
@@ -20,7 +24,3 @@ class TicketStateConflict(DomainError):
 
 class TicketVersionConflict(DomainError):
     code = "ticket_version_conflict"
-
-
-class TicketTenantMismatch(TicketNotFound):
-    code = "ticket_not_found"

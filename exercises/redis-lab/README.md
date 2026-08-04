@@ -21,8 +21,18 @@ python stream_demo.py consume
 
 ## `stream_demo.py`
 
-生产一条 `ticket.closed`，再用 Consumer Group 读取、演示幂等标记并 ACK。脚本中的 Redis 幂等标记只用于观察重复消息；生产业务必须把 `processed_events` 与业务写入放在同一个 PostgreSQL 事务中，不能用这个演示 Key 代替事实库事务。
+生产一条完整 `ticket.closed` Envelope，再用 Consumer Group 读取、演示幂等标记并 ACK。脚本中的 Redis 幂等标记只用于观察重复消息；生产业务必须把 `processed_events` 与业务写入放在同一个 PostgreSQL 事务中，不能用这个演示 Key 代替事实库事务。
 
-独立练习：在 ACK 前强制退出，查看 `XPENDING`；重新运行时使用 `XAUTOCLAIM` 接管超时消息。思考业务已经提交、ACK 尚未发生时，为什么仍需要 `event_id` 幂等。
+按下面顺序完成一次可重复的宕机恢复实验：
+
+```powershell
+python stream_demo.py produce
+python stream_demo.py consume-crash  # 模拟副作用完成、ACK 前宕机
+python stream_demo.py pending        # 对应 XPENDING
+python stream_demo.py reclaim        # 对应 XAUTOCLAIM，接管并 ACK
+python stream_demo.py pending        # pending 应回到 0
+```
+
+`reclaim` 为了让本地实验立即完成，把 `min_idle_time` 设为 0。生产环境必须使用大于正常处理时长的阈值，避免两个消费者同时处理仍在运行的任务。观察恢复消费者如何用同一 `event_id` 跳过重复副作用。
 
 这些脚本只用于本地理解协议，不是生产级事件框架。

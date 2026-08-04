@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -27,20 +29,28 @@ func NewHandler(service *Service, logger *slog.Logger) *Handler {
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/tickets", h.create)
+	mux.HandleFunc("GET /api/v1/tickets", h.list)
 	mux.HandleFunc("GET /api/v1/tickets/{id}", h.get)
 	mux.HandleFunc("POST /api/v1/tickets/{id}/close", h.close)
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
+	principal, err := principalFromContext(r.Context())
+	if err != nil {
+		h.handleError(w, r, err)
+		return
+	}
 	var input CreateInput
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&input); err != nil {
-		writeError(w, r, http.StatusBadRequest, "invalid_json", "invalid request body")
+	if code, ok := decodeStrictJSON(w, r, &input); !ok {
+		status := http.StatusBadRequest
+		if code == "invalid_ticket_input" {
+			status = http.StatusUnprocessableEntity
+		}
+		writeError(w, r, status, code, "invalid request body")
 		return
 	}
 
-	value, err := h.service.Create(r.Context(), input)
+	value, err := h.service.Create(r.Context(), principal.TenantID, input)
 	if err != nil {
 		h.handleError(w, r, err)
 		return
@@ -52,7 +62,12 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	value, err := h.service.Get(r.Context(), r.PathValue("id"), r.URL.Query().Get("tenant_id"))
+	principal, err := principalFromContext(r.Context())
+	if err != nil {
+		h.handleError(w, r, err)
+		return
+	}
+	value, err := h.service.Get(r.Context(), r.PathValue("id"), principal.TenantID)
 	if err != nil {
 		h.handleError(w, r, err)
 		return
@@ -62,18 +77,49 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	principal, err := principalFromContext(r.Context())
+	if err != nil {
+		h.handleError(w, r, err)
+		return
+	}
+	limit := 20
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		limit, err = strconv.Atoi(raw)
+		if err != nil {
+			writeError(w, r, http.StatusUnprocessableEntity, "invalid_ticket_input", "invalid limit")
+			return
+		}
+	}
+	values, err := h.service.List(r.Context(), principal.TenantID, limit)
+	if err != nil {
+		h.handleError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response{
+		Code: "ok", Message: "ok", RequestID: requestID(r), Data: values,
+	})
+}
+
 func (h *Handler) close(w http.ResponseWriter, r *http.Request) {
+	principal, err := principalFromContext(r.Context())
+	if err != nil {
+		h.handleError(w, r, err)
+		return
+	}
 	var input CloseInput
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&input); err != nil {
-		writeError(w, r, http.StatusBadRequest, "invalid_json", "invalid request body")
+	if code, ok := decodeStrictJSON(w, r, &input); !ok {
+		status := http.StatusBadRequest
+		if code == "invalid_ticket_input" {
+			status = http.StatusUnprocessableEntity
+		}
+		writeError(w, r, status, code, "invalid request body")
 		return
 	}
 	value, err := h.service.Close(
 		r.Context(),
 		r.PathValue("id"),
-		input.TenantID,
+		principal.TenantID,
 		input.ExpectedVersion,
 	)
 	if err != nil {
@@ -87,8 +133,10 @@ func (h *Handler) close(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, ErrAuthentication):
+		writeError(w, r, http.StatusUnauthorized, "authentication_required", err.Error())
 	case errors.Is(err, ErrInvalidInput):
-		writeError(w, r, http.StatusBadRequest, "invalid_ticket_input", err.Error())
+		writeError(w, r, http.StatusUnprocessableEntity, "invalid_ticket_input", err.Error())
 	case errors.Is(err, ErrNotFound):
 		writeError(w, r, http.StatusNotFound, "ticket_not_found", err.Error())
 	case errors.Is(err, ErrStateConflict):
@@ -99,6 +147,21 @@ func (h *Handler) handleError(w http.ResponseWriter, r *http.Request, err error)
 		h.logger.Error("request failed", "error", err, "request_id", requestID(r))
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal error")
 	}
+}
+
+func decodeStrictJSON(w http.ResponseWriter, r *http.Request, target any) (string, bool) {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		if strings.Contains(err.Error(), "unknown field") {
+			return "invalid_ticket_input", false
+		}
+		return "invalid_json", false
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return "invalid_json", false
+	}
+	return "", true
 }
 
 func RequestContext(next http.Handler) http.Handler {

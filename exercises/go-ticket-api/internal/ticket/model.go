@@ -20,11 +20,14 @@ type Ticket struct {
 }
 
 type CreateInput struct {
-	TenantID string `json:"tenant_id"`
-	Title    string `json:"title"`
+	Title string `json:"title"`
 }
 
 type CloseInput struct {
-	TenantID        string `json:"tenant_id"`
-	ExpectedVersion int64  `json:"expected_version"`
+	ExpectedVersion int64 `json:"expected_version"`
+}
+
+type Principal struct {
+	Subject  string
+	TenantID string
 }

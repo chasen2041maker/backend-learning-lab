@@ -1,173 +1,173 @@
-# Python + Go 后端同步学习路线
+# 20 周 Python 主线 + Go 复现路线
 
-建议每天 60～90 分钟。计划按 16 周设计，但不是截止日期；每周只有在完成“独立验收”后才进入下一周。
+每天建议 60～90 分钟；“周”只是容量上限，不是截止日期。Python 先学并完成验收，Go 永远落后 1～2 个阶段，用来复现已经理解的后端概念，而不是同时学习两套新知识。若一周验收没通过，就顺延，不把欠账带到下一阶段。
 
-## 第 0 周：环境与学习方法
+当前求职目标所需优先级：后端可靠性、SQL、Redis、并发、测试、容器、系统设计、Agent 工程化高于重新系统学习 GAN、强化学习或训练模型。后者不是永远不学，而是等主线项目能独立讲清后再按岗位补。
 
-- 认识进程、端口、环境变量、依赖和 Git；
-- 安装 Python 3.11+、Go 1.22+、Git；
-- Docker Desktop 可以延后到第 5 周；
-- 分别跑通 Python 和 Go 测试。
+## 第 0 周：环境、Git 与 AI 使用边界
 
-验收：关闭教程后，能说明源代码、运行进程、端口和依赖之间的关系。
+- 进程、端口、环境变量、依赖、工作目录；
+- Git commit/diff/branch 与公开仓库脱敏；
+- AI 可以解释和审查，但每段合入代码必须能自己运行、测试、复述。
 
-## 第 1 周：请求生命周期与 HTTP
+验收：关闭 AI，分别运行 Python、Go 测试，并根据失败信息定位文件。
 
-- 客户端、DNS、TCP、HTTP、反向代理、BFF、服务和数据库；
-- 方法、路径、Header、Body、状态码；
-- 超时发生在哪一层；
-- request ID 为什么要贯穿链路。
+## 第 1 周：HTTP 请求生命周期（Python）
 
-验收：画出 `POST /tickets` 从请求到落库再到响应的路径，并标出至少三个失败点。
+- DNS/TCP/HTTP、反向代理、Handler、Service、数据库；
+- Method、Path、Header、Body、状态码、request ID；
+- 超时可能发生在哪一层。
 
-## 第 2 周：Python 与 Go 的后端基础
+验收：画出 `POST /tickets` 完整路径并标出三个失败点。
 
-- Python 类型提示、异常、上下文管理、`async/await`；
-- Go struct、interface、error、`context.Context`、goroutine；
-- 两种语言如何表达同一个 Ticket 模型和 Service 接口。
+## 第 2 周：Python 后端基础
 
-验收：不用 AI 新增一个 `priority` 字段，并修复全部测试。
+- 类型提示、dataclass/Pydantic、异常、Protocol；
+- `async/await`、上下文管理与资源关闭；
+- Handler/Service/Repository 的职责。
 
-## 第 3 周：分层服务与依赖注入
+验收：不用 AI 新增 `priority` 字段并修复测试。
 
-- Handler/API：协议翻译；
-- Service：业务规则与事务意图；
-- Repository：持久化；
-- Domain：业务状态和不变量；
-- 为什么不能让 Handler 直接拼 SQL。
+## 第 3 周：先测试再扩展 Python API
 
-验收：分别在 Python、Go 项目新增“关闭工单”功能，并证明非法状态转换会失败。
+- 单元测试、Handler 测试、fake 与真实依赖的边界；
+- 输入验证、稳定错误码、未知异常 Envelope；
+- 状态机和乐观版本的第一版。
 
-## 第 4 周：API 契约
+验收：先写失败测试，再完成关闭工单与冲突处理。
 
-- REST 资源、版本、统一响应、稳定错误码；
-- OpenAPI、分页、兼容变更；
-- 身份传播和服务端可信边界；
-- 契约测试与实现同步。
+## 第 4 周：契约、身份与租户边界
 
-验收：先修改 `contracts/api-contract.md`，再修改实现和测试，不允许反过来猜字段。
+- OpenAPI、兼容变更、严格 JSON、Unicode 与 UUID；
+- Authentication 产生可信 Principal，Authorization 检查权限/owner/tenant；
+- 客户端不能自报租户；共享契约测试防止多实现漂移。
 
-## 第 5 周：SQL 与 PostgreSQL
+验收：运行 `contracts/http-cases.json`，解释三条越权测试。
 
-- 表、行、主键、外键、唯一约束、检查约束；
-- `SELECT/INSERT/UPDATE/JOIN/GROUP BY`；
-- B-Tree 索引、组合索引最左前缀；
-- `EXPLAIN`、N+1、游标分页；
-- 多租户查询为什么必须包含 `tenant_id`。
+## 第 5 周：Docker 与本地依赖
 
-验收：完成 SQL 练习，并用 `EXPLAIN` 比较有索引和无索引查询。
+- Image、Container、Volume、Network、端口绑定；
+- Compose 启动 PostgreSQL/Redis，健康检查与数据卷；
+- Tag、digest、环境变量与本地弱口令边界。
 
-## 第 6 周：事务、并发更新与幂等
+验收：启动/停止依赖，说明删除容器和删除 Volume 的区别。
 
-- ACID 与常见隔离级别；
-- 丢失更新、悲观锁、乐观锁；
-- 幂等键和唯一约束；
-- Webhook 的验签、事件去重、顺序和重放；
-- 进程宕机造成的失败窗口。
+## 第 6 周：SQL 与 PostgreSQL 基础
 
-验收：针对重复回调、事务提交后宕机、响应丢失三种情况，写出状态变化和恢复方法。
+- DDL/DML、主外键、唯一/检查约束；
+- JOIN/GROUP BY、B-Tree/组合索引、`EXPLAIN`、N+1；
+- 每条租户查询都包含 `tenant_id`，游标分页使用 `(created_at,id)`。
 
-## 第 7 周：Redis
+验收：完成 SQL challenge，并比较有无索引执行计划。
 
-- Redis 适合和不适合保存什么；
-- Cache Aside、TTL、缓存穿透/击穿/雪崩；
-- 限流、短期幂等和分布式锁的边界；
-- 为什么不能把积分、工单状态只放在 Redis。
+## 第 7 周：Python 接入 PostgreSQL
 
-验收：运行缓存实验，证明缓存删除后仍能从事实源恢复。
+- migration 前滚/回滚策略，禁止应用启动时并发乱跑 DDL；
+- 连接池大小、获取连接超时、statement timeout、取消与资源预算；
+- deadlock 识别/有限重试、备份恢复演练；
+- Repository 集成测试与事务边界。
 
-## 第 8 周：异步、并发、超时与取消
+验收：写一个 migration 和集成测试，模拟超时并确认连接被释放。
 
-- Python 事件循环和协程；
-- Go goroutine、channel、WaitGroup；
-- I/O 并发不等于 CPU 并行；
-- deadline、超时传播、有限并发；
-- 重试必须考虑幂等、退避和抖动。
+## 第 8 周：Go 语言后端基础（复现第 1～3 周）
 
-验收：实现三个并发下游调用，其中一个超时不会无限阻塞整体请求。
+- package/module、struct、slice/map、pointer、method、interface；
+- `(value, error)`、`errors.Is`、`defer`、`context.Context`；
+- goroutine/channel 只学能读懂的最小集合。
 
-## 第 9 周：Outbox、Redis Streams 与任务恢复
+验收：不用框架写一个有测试的 Handler → Service → Repository。
 
-- “写数据库 + 发消息”的双写问题；
-- Transactional Outbox；
-- Consumer Group、Pending、ACK、claim；
-- 至少一次投递与消费者幂等；
-- retry、DLQ、租约与 fencing token。
+## 第 9 周：Go API 与共享契约（复现第 4 周）
 
-验收：手工推演消费者处理成功前宕机、处理成功后 ACK 前宕机两种情况。
+- `net/http` 路由、中间件、严格 JSON、graceful shutdown；
+- 可信 Principal 和 tenant-scoped Repository；
+- 与 Python 读取同一份契约用例。
 
-## 第 10 周：认证、安全与权限
+验收：Python/Go 契约测试同时通过，能解释行为差异如何被发现。
 
-- 密码哈希、JWT Access Token、Opaque Refresh Token；
-- Authentication 与 Authorization；
-- RBAC、资源 owner、多租户隔离；
-- 注入、SSRF、日志泄密、密钥管理；
-- 限流、审计和最小权限。
+## 第 10 周：事务、并发更新与幂等
 
-验收：写出三条越权测试，证明“前端隐藏按钮”不是权限控制。
+- ACID、隔离级别、丢失更新、乐观/悲观锁；
+- 幂等键 + 唯一约束 + 请求哈希；
+- 提交后响应丢失、并发重复请求和 deadlock 的恢复。
 
-## 第 11 周：测试与调试
+验收：为三种失败窗口写状态表和测试证据。
 
-- 单元、集成、契约、E2E 的边界；
-- fake、mock、真实依赖分别证明什么；
-- table-driven test 与 pytest fixture；
-- 从复现、证据、假设到最小修复；
-- AI 生成代码的审查清单。
+## 第 11 周：Redis 的运行时边界
 
-验收：为一个真实缺陷先写失败测试，再修复并记录证据。
+- Cache Aside、TTL、穿透/击穿/雪崩；
+- 连接池、command timeout、最大内存、淘汰策略、持久化和重启；
+- 限流/短期幂等/锁的边界；事实状态不能只放 Redis。
 
-## 第 12 周：日志、指标与 Trace
+验收：缓存删除后从事实库恢复，并说明 Redis 不可用时降级还是失败。
+
+## 第 12 周：异步并发、超时与取消
+
+- Python event loop 与 Go goroutine 的 I/O 并发；
+- deadline 传播、有限并发、背压；
+- 重试只针对可重试错误，并带退避、抖动、次数和总预算。
+
+验收：运行 `reliability-labs/concurrency_timeout.py` 测试，证明慢依赖不会无限拖住整体。
+
+## 第 13 周：Webhook、认证与安全
+
+- 原始字节 HMAC、时间窗、event ID 去重与乱序；
+- 密码哈希/JWT/opaque refresh token 的职责（不手写密码学）；
+- RBAC/owner/tenant、注入、SSRF、日志泄密、最小权限。
+
+验收：修改一个 JSON 空白但不改语义，证明“解析后再签名”为何会失败。
+
+## 第 14 周：Outbox、Streams 与恢复
+
+- 双写问题与 Transactional Outbox；
+- claim/lease/fencing、有限重试、DLQ；
+- Consumer Group、Pending、ACK、`XAUTOCLAIM`、消费者幂等。
+
+验收：完成 Redis `consume-crash → pending → reclaim`，并运行 Outbox fencing 测试。
+
+## 第 15 周：测试、调试与 CI
+
+- unit/integration/contract/E2E 各证明什么；
+- 从复现、证据、假设、最小修复到回归测试；
+- format/lint/race/SQL/Compose/link/secret scan；
+- AI 代码送审必须附测试证据与未解决限制。
+
+验收：为真实缺陷先写失败测试，再修复并记录 debug log。
+
+## 第 16 周：日志、指标、Trace 与资源预算
 
 - 结构化日志与 request/trace/event ID；
-- RED：Rate、Errors、Duration；
-- 队列积压、数据库连接和 AI 成本指标；
-- readiness 与 liveness 的区别；
-- SLO、告警和错误预算。
+- RED、队列积压、连接池、Agent 延迟/Token/费用；
+- CPU/内存/连接/goroutine/任务并发预算；
+- liveness/readiness、SLO、告警和错误预算。
 
-验收：给工单创建、Webhook 和异步消费设计指标与告警，不允许只写“打印日志”。
+验收：暴露指标并设计三条有阈值、有持续时间、有行动的告警。
 
-## 第 13 周：Docker、K8s 与 CI/CD
+## 第 17 周：部署与 K8s 阅读能力
 
-- Image、Container、Volume、Network；
-- Docker Compose 本地依赖；
-- K8s Deployment、Service、ConfigMap、Secret、Probe；
-- migration Job、滚动发布、镜像 digest 和回滚；
-- format、lint、test、build、scan、deploy、smoke。
+- 多阶段构建、非 root、只读文件系统、镜像 digest；
+- Deployment/Service/ConfigMap/Secret/Probe；
+- migration Job、滚动发布、回滚与 smoke test。
 
-验收：启动 PostgreSQL/Redis，解释数据卷和健康检查；能读懂一个 Deployment，但不要求独立维护生产集群。
+验收：通过 K8s dry-run，解释 requests/limits 和两个 Probe；不要求维护生产集群。
 
-## 第 14 周：gRPC、事件契约与服务边界
+## 第 18 周：服务边界与通信
 
-- REST、gRPC 和异步事件各自适用的场景；
-- Protobuf 字段编号与兼容性；
-- BFF 聚合与 owner service；
-- 同步链路过长为什么脆弱；
-- 契约版本升级。
+- REST/gRPC/事件的取舍；Protobuf 字段兼容；
+- BFF 聚合与 owner service，不跨服务写表；
+- 同步链路过长、级联超时与容量估算。
 
-验收：把一个跨服务需求拆成同步查询与异步事件，说明选择理由。
+验收：把一个跨服务需求拆成同步查询和异步事件并说明理由。
 
-## 第 15 周：RAG/Agent 生产化
+## 第 19 周：RAG/Agent 生产化
 
-本周不重复讲 embedding 和基础检索，重点是：
+- Provider/Tool Registry、结构化输入输出、deadline、预算、降级；
+- tenant 权限过滤、来源、离线评测与 Bad Case；
+- Prompt 注入与敏感数据；模型输出永远不是权限决定；
+- 有副作用 Tool 必须 allowlist、授权、人工确认、幂等、审计与补偿。
 
-- Provider/Tool Registry 与权限/成本控制；
-- 结构化输入输出、超时、预算和降级；
-- RAG 数据 owner、版本和权限过滤；
-- 离线评测、Bad Case、在线指标；
-- Prompt 注入、引用验证和敏感数据；
-- 模型不可用时怎样明确失败。
+验收：运行 Fake RAG 与 Tool Authorization 测试，证明跨租户来源和未确认写操作被拒绝。
 
-验收：为熟悉的 RAG 增加请求预算、超时、来源、评测样本和稳定错误码。
+## 第 20 周：分阶段综合项目与讲解
 
-## 第 16 周：综合项目与讲解
-
-完成 [可靠工单 + Agent 任务后端](projects/reliable-support-agent/README.md)：
-
-- Go Gateway/BFF；
-- Python Agent Task Service；
-- PostgreSQL 事实表和 Outbox；
-- Redis 缓存与 Streams；
-- Webhook 幂等；
-- 测试、指标、Docker Compose 和故障演练。
-
-最终验收不是代码行数，而是你能在不打开 AI 的情况下讲清楚：边界、事务、失败窗口、恢复、验证证据和仍未解决的限制。
+按 [项目阶段](projects/reliable-support-agent/phases.md) 一次只完成一个可运行切片，每个阶段打 Tag 后再进入下一阶段。最终关闭 AI 录制 10 分钟讲解：边界、事务、失败窗口、恢复、验证证据和仍未解决的限制。

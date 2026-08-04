@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from redis.asyncio import Redis
@@ -11,6 +12,7 @@ from redis.exceptions import ResponseError
 STREAM = "lab:events"
 GROUP = "lab-consumers"
 CONSUMER = "learner-1"
+RECOVERY_CONSUMER = "learner-recovery"
 
 
 async def ensure_group(redis: Redis) -> None:
@@ -27,14 +29,43 @@ async def produce(redis: Redis) -> None:
         "event_id": event_id,
         "event_type": "ticket.closed",
         "event_version": 1,
+        "occurred_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "tenant_id": "tenant_demo",
+        "request_id": f"req_{uuid4().hex}",
+        "trace_id": uuid4().hex,
         "payload": {"ticket_id": "ticket_1", "version": 2},
     }
     message_id = await redis.xadd(STREAM, {"event": json.dumps(payload)})
     print(f"produced message_id={message_id} event_id={event_id}")
 
 
-async def consume_once(redis: Redis) -> None:
+async def process_entry(
+    redis: Redis,
+    message_id: str,
+    fields: dict[str, str],
+    *,
+    ack: bool,
+) -> None:
+    event = json.loads(fields["event"])
+    idempotency_key = f"lab:processed:{GROUP}:{event['event_id']}"
+    already_processed = await redis.exists(idempotency_key)
+    if already_processed:
+        print(f"duplicate event {event['event_id']}: skip business effect")
+    else:
+        print(f"apply demo effect for {event['event_id']}")
+        print(
+            "production: commit business effect + processed_events in one PostgreSQL transaction"
+        )
+        # This Redis marker is only observable demo state, not production idempotency.
+        await redis.set(idempotency_key, "1", ex=86_400)
+    if ack:
+        await redis.xack(STREAM, GROUP, message_id)
+        print(f"acked message_id={message_id}")
+    else:
+        print(f"simulated crash before ACK; message_id={message_id} remains pending")
+
+
+async def consume_once(redis: Redis, *, ack: bool = True) -> None:
     await ensure_group(redis)
     messages = await redis.xreadgroup(
         groupname=GROUP,
@@ -49,29 +80,56 @@ async def consume_once(redis: Redis) -> None:
 
     _, entries = messages[0]
     message_id, fields = entries[0]
-    event = json.loads(fields["event"])
-    idempotency_key = f"lab:processed:{GROUP}:{event['event_id']}"
-    already_processed = await redis.exists(idempotency_key)
-    if already_processed:
-        print(f"duplicate event {event['event_id']}: skip business effect")
-    else:
-        print(f"apply demo effect for {event['event_id']}")
-        print("production: commit business effect + processed_events in one PostgreSQL transaction")
-        # This Redis marker is only observable demo state, not production idempotency.
-        await redis.set(idempotency_key, "1", ex=86_400)
-    await redis.xack(STREAM, GROUP, message_id)
-    print(f"acked message_id={message_id}")
+    await process_entry(redis, message_id, fields, ack=ack)
+
+
+async def show_pending(redis: Redis) -> None:
+    await ensure_group(redis)
+    summary = await redis.xpending(STREAM, GROUP)
+    print(json.dumps(summary, ensure_ascii=False, default=str, indent=2))
+    entries = await redis.xpending_range(STREAM, GROUP, min="-", max="+", count=10)
+    print(json.dumps(entries, ensure_ascii=False, default=str, indent=2))
+
+
+async def reclaim(redis: Redis) -> None:
+    await ensure_group(redis)
+    result = await redis.xautoclaim(
+        STREAM,
+        GROUP,
+        RECOVERY_CONSUMER,
+        min_idle_time=0,
+        start_id="0-0",
+        count=10,
+    )
+    entries = result[1]
+    if not entries:
+        print("no pending message to reclaim")
+        return
+    for message_id, fields in entries:
+        print(f"reclaimed message_id={message_id} as {RECOVERY_CONSUMER}")
+        await process_entry(redis, message_id, fields, ack=True)
 
 
 async def main() -> None:
-    if len(sys.argv) != 2 or sys.argv[1] not in {"produce", "consume"}:
-        raise SystemExit("usage: python stream_demo.py [produce|consume]")
+    commands = {"produce", "consume", "consume-crash", "pending", "reclaim"}
+    if len(sys.argv) != 2 or sys.argv[1] not in commands:
+        raise SystemExit(
+            "usage: python stream_demo.py "
+            "[produce|consume|consume-crash|pending|reclaim]"
+        )
     redis = Redis.from_url("redis://127.0.0.1:6379/0", decode_responses=True)
     try:
-        if sys.argv[1] == "produce":
+        command = sys.argv[1]
+        if command == "produce":
             await produce(redis)
-        else:
+        elif command == "consume":
             await consume_once(redis)
+        elif command == "consume-crash":
+            await consume_once(redis, ack=False)
+        elif command == "pending":
+            await show_pending(redis)
+        else:
+            await reclaim(redis)
     finally:
         await redis.aclose()
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Generic, TypeVar
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,8 +13,11 @@ class TicketStatus(StrEnum):
     CLOSED = "closed"
 
 
-class TicketCreate(BaseModel):
-    tenant_id: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+class StrictInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class TicketCreate(StrictInput):
     title: str = Field(min_length=1, max_length=200)
 
     @field_validator("title")
@@ -25,9 +29,15 @@ class TicketCreate(BaseModel):
         return stripped
 
 
-class TicketClose(BaseModel):
-    tenant_id: str = Field(min_length=1, max_length=64)
+class TicketClose(StrictInput):
     expected_version: int = Field(ge=1)
+
+
+class Principal(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    subject: str
+    tenant_id: str
 
 
 class Ticket(BaseModel):
@@ -42,11 +52,11 @@ class Ticket(BaseModel):
     updated_at: datetime
 
     @classmethod
-    def new(cls, command: TicketCreate) -> Ticket:
+    def new(cls, command: TicketCreate, tenant_id: str) -> Ticket:
         now = datetime.now(UTC)
         return cls(
             id=uuid4(),
-            tenant_id=command.tenant_id,
+            tenant_id=tenant_id,
             title=command.title,
             status=TicketStatus.OPEN,
             version=1,
@@ -55,8 +65,11 @@ class Ticket(BaseModel):
         )
 
 
-class ApiResponse(BaseModel):
+T = TypeVar("T")
+
+
+class ApiResponse(BaseModel, Generic[T]):
     code: str
     message: str
     request_id: str
-    data: object | None
+    data: T | None

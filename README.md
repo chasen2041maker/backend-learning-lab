@@ -2,7 +2,7 @@
 
 这是一个面向后端初学者的可运行学习仓库。它不是“后端名词大全”，而是一条从 HTTP 请求开始，逐步走到数据库、Redis、异步事件、可靠性、容器和 AI 服务生产化的实践路线。
 
-Python 与 Go 同步学习：
+Python 主线、Go 延后 1～2 个阶段复现：
 
 - Python 用 FastAPI 练习 AI/Agent 服务常见的 API、异步任务和测试；
 - Go 用标准库 `net/http` 练习 BFF、微服务边界、并发和错误处理；
@@ -29,6 +29,7 @@ backend-learning-lab/
 │  ├─ go-ticket-api/            # Go net/http 分层 API 与 go test
 │  ├─ sql-postgres/             # 表、索引、事务和查询练习
 │  ├─ redis-lab/                # 缓存、幂等和 Streams 小实验
+│  ├─ reliability-labs/          # 并发/鉴权/Webhook/Outbox/指标/RAG 微实验
 │  └─ infrastructure/           # 本地 PostgreSQL + Redis
 ├─ contracts/                   # HTTP 与事件契约
 ├─ projects/reliable-support-agent/
@@ -74,7 +75,8 @@ Python：
 cd exercises\python-ticket-api
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements-dev.lock
+python -m pip install --no-deps -e .
 pytest
 ```
 
@@ -88,4 +90,4 @@ go test ./...
 go run ./cmd/server
 ```
 
-基础设施在后续课程再启动，不要第一天同时安装和调试全部组件。
+基础设施到第 5 周再启动，不要第一天同时安装和调试全部组件。整仓检查可在根目录运行 `powershell -File scripts/check.ps1`。

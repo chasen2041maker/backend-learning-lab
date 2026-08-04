@@ -4,22 +4,38 @@ import logging
 from collections.abc import Awaitable, Callable
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .errors import (
+    AuthenticationRequired,
     DomainError,
     TicketNotFound,
     TicketStateConflict,
     TicketVersionConflict,
 )
-from .models import ApiResponse, Ticket, TicketClose, TicketCreate
+from .models import ApiResponse, Principal, Ticket, TicketClose, TicketCreate
 from .repository import InMemoryTicketRepository, TicketRepository
 from .service import TicketService
 
 logger = logging.getLogger("ticket_api")
+
+LAB_TOKENS = {
+    "lab-token-tenant-a": Principal(subject="user_a", tenant_id="tenant_a"),
+    "lab-token-tenant-b": Principal(subject="user_b", tenant_id="tenant_b"),
+}
+
+
+def get_principal(authorization: str | None = Header(default=None)) -> Principal:
+    """Learning-only token verifier; a real service verifies signed/opaque credentials."""
+    if authorization is None or not authorization.startswith("Bearer "):
+        raise AuthenticationRequired("a bearer token is required")
+    principal = LAB_TOKENS.get(authorization.removeprefix("Bearer ").strip())
+    if principal is None:
+        raise AuthenticationRequired("the bearer token is invalid")
+    return principal
 
 
 def create_app(repository: TicketRepository | None = None) -> FastAPI:
@@ -44,7 +60,9 @@ def create_app(repository: TicketRepository | None = None) -> FastAPI:
     @app.exception_handler(DomainError)
     async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
         status_code = 409
-        if isinstance(exc, TicketNotFound):
+        if isinstance(exc, AuthenticationRequired):
+            status_code = 401
+        elif isinstance(exc, TicketNotFound):
             status_code = 404
         elif isinstance(exc, (TicketStateConflict, TicketVersionConflict)):
             status_code = 409
@@ -56,75 +74,101 @@ def create_app(repository: TicketRepository | None = None) -> FastAPI:
                 "request_id": request.state.request_id,
                 "data": None,
             },
+            headers={"X-Request-ID": request.state.request_id},
         )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        error_code = "invalid_ticket_input"
+        if any(error.get("type") == "json_invalid" for error in exc.errors()):
+            error_code = "invalid_json"
+        status_code = 400 if error_code == "invalid_json" else 422
         return JSONResponse(
-            status_code=422,
+            status_code=status_code,
             content={
-                "code": "invalid_ticket_input",
+                "code": error_code,
                 "message": "request validation failed",
                 "request_id": request.state.request_id,
                 "data": {"errors": jsonable_encoder(exc.errors())},
             },
+            headers={"X-Request-ID": request.state.request_id},
+        )
+
+    @app.exception_handler(Exception)
+    async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception(
+            "unhandled request error",
+            extra={"request_id": request.state.request_id},
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "internal_error",
+                "message": "internal error",
+                "request_id": request.state.request_id,
+                "data": None,
+            },
+            headers={"X-Request-ID": request.state.request_id},
         )
 
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.post("/api/v1/tickets", status_code=201, response_model=ApiResponse)
+    @app.post("/api/v1/tickets", status_code=201, response_model=ApiResponse[Ticket])
     async def create_ticket(
         command: TicketCreate,
         request: Request,
+        principal: Principal = Depends(get_principal),
         ticket_service: TicketService = Depends(get_service),
-    ) -> ApiResponse:
-        ticket = await ticket_service.create(command)
+    ) -> ApiResponse[Ticket]:
+        ticket = await ticket_service.create(principal.tenant_id, command)
         logger.info("ticket_created", extra={"ticket_id": str(ticket.id)})
         return ApiResponse(
             code="ok",
             message="created",
             request_id=request.state.request_id,
-            data=ticket.model_dump(mode="json"),
+            data=ticket,
         )
 
-    @app.get("/api/v1/tickets/{ticket_id}", response_model=ApiResponse)
+    @app.get("/api/v1/tickets/{ticket_id}", response_model=ApiResponse[Ticket])
     async def get_ticket(
         ticket_id: UUID,
         request: Request,
-        tenant_id: str = Query(min_length=1, max_length=64),
+        principal: Principal = Depends(get_principal),
         ticket_service: TicketService = Depends(get_service),
-    ) -> ApiResponse:
-        ticket = await ticket_service.get(ticket_id, tenant_id)
+    ) -> ApiResponse[Ticket]:
+        ticket = await ticket_service.get(ticket_id, principal.tenant_id)
         return _success(request, ticket)
 
-    @app.get("/api/v1/tickets", response_model=ApiResponse)
+    @app.get("/api/v1/tickets", response_model=ApiResponse[list[Ticket]])
     async def list_tickets(
         request: Request,
-        tenant_id: str = Query(min_length=1, max_length=64),
+        principal: Principal = Depends(get_principal),
+        limit: int = Query(default=20, ge=1, le=100),
         ticket_service: TicketService = Depends(get_service),
-    ) -> ApiResponse:
-        tickets = await ticket_service.list_for_tenant(tenant_id)
+    ) -> ApiResponse[list[Ticket]]:
+        tickets = await ticket_service.list_for_tenant(principal.tenant_id)
         return ApiResponse(
             code="ok",
             message="ok",
             request_id=request.state.request_id,
-            data=[ticket.model_dump(mode="json") for ticket in tickets],
+            data=list(tickets[:limit]),
         )
 
-    @app.post("/api/v1/tickets/{ticket_id}/close", response_model=ApiResponse)
+    @app.post("/api/v1/tickets/{ticket_id}/close", response_model=ApiResponse[Ticket])
     async def close_ticket(
         ticket_id: UUID,
         command: TicketClose,
         request: Request,
+        principal: Principal = Depends(get_principal),
         ticket_service: TicketService = Depends(get_service),
-    ) -> ApiResponse:
+    ) -> ApiResponse[Ticket]:
         ticket = await ticket_service.close(
             ticket_id=ticket_id,
-            tenant_id=command.tenant_id,
+            tenant_id=principal.tenant_id,
             expected_version=command.expected_version,
         )
         return _success(request, ticket)
@@ -132,12 +176,12 @@ def create_app(repository: TicketRepository | None = None) -> FastAPI:
     return app
 
 
-def _success(request: Request, ticket: Ticket) -> ApiResponse:
+def _success(request: Request, ticket: Ticket) -> ApiResponse[Ticket]:
     return ApiResponse(
         code="ok",
         message="ok",
         request_id=request.state.request_id,
-        data=ticket.model_dump(mode="json"),
+        data=ticket,
     )
 
 

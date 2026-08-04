@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-learning-metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-learning-metrics
+  template:
+    metadata:
+      labels:
+        app: backend-learning-metrics
+    spec:
+      containers:
+        - name: app
+          image: backend-learning-metrics:0.1.0
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8081
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true

@@ -1,0 +1,63 @@
+{
+  "contract_version": 1,
+  "id_format": "uuid-v4",
+  "title_length_unit": "unicode_code_points",
+  "create_cases": [
+    {
+      "name": "valid ascii",
+      "authorization": true,
+      "body": {"title": "Cannot sign in"},
+      "expected_status": 201,
+      "expected_code": "ok"
+    },
+    {
+      "name": "valid unicode characters",
+      "authorization": true,
+      "repeat_title": {"text": "中", "count": 100},
+      "expected_status": 201,
+      "expected_code": "ok"
+    },
+    {
+      "name": "blank title",
+      "authorization": true,
+      "body": {"title": "   "},
+      "expected_status": 422,
+      "expected_code": "invalid_ticket_input"
+    },
+    {
+      "name": "unknown field",
+      "authorization": true,
+      "body": {"title": "Valid", "extra": true},
+      "expected_status": 422,
+      "expected_code": "invalid_ticket_input"
+    },
+    {
+      "name": "client tenant forgery",
+      "authorization": true,
+      "body": {"title": "Forged", "tenant_id": "tenant_b"},
+      "expected_status": 422,
+      "expected_code": "invalid_ticket_input"
+    },
+    {
+      "name": "malformed json",
+      "authorization": true,
+      "raw_body": "{\"title\":",
+      "expected_status": 400,
+      "expected_code": "invalid_json"
+    },
+    {
+      "name": "trailing json",
+      "authorization": true,
+      "raw_body": "{\"title\":\"Valid\"}{\"second\":true}",
+      "expected_status": 400,
+      "expected_code": "invalid_json"
+    },
+    {
+      "name": "missing authentication",
+      "authorization": false,
+      "body": {"title": "No auth"},
+      "expected_status": 401,
+      "expected_code": "authentication_required"
+    }
+  ]
+}

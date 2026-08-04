@@ -1,12 +1,12 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.4-alpine@sha256:7062a2109c4b51f3c792c7ea01e83ed12ef9a980886e3b3d380a7d2e5f6ce3f5
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-lab}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lab}
       POSTGRES_DB: ${POSTGRES_DB:-backend_lab}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../sql-postgres:/workspace:ro
@@ -17,10 +17,10 @@ services:
       retries: 10
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:

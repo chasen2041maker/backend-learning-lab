@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Service struct {
@@ -17,10 +18,9 @@ func NewService(repository Repository) *Service {
 	return &Service{repository: repository}
 }
 
-func (s *Service) Create(ctx context.Context, input CreateInput) (Ticket, error) {
-	tenantID := strings.TrimSpace(input.TenantID)
+func (s *Service) Create(ctx context.Context, tenantID string, input CreateInput) (Ticket, error) {
 	title := strings.TrimSpace(input.Title)
-	if tenantID == "" || title == "" || len(tenantID) > 64 || len(title) > 200 {
+	if tenantID == "" || title == "" || len(tenantID) > 64 || utf8.RuneCountInString(title) > 200 {
 		return Ticket{}, ErrInvalidInput
 	}
 
@@ -46,7 +46,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (Ticket, error)
 }
 
 func (s *Service) Get(ctx context.Context, id, tenantID string) (Ticket, error) {
-	value, err := s.repository.Get(ctx, id)
+	value, err := s.repository.Get(ctx, tenantID, id)
 	if err != nil {
 		return Ticket{}, err
 	}
@@ -55,6 +55,17 @@ func (s *Service) Get(ctx context.Context, id, tenantID string) (Ticket, error) 
 		return Ticket{}, ErrNotFound
 	}
 	return value, nil
+}
+
+func (s *Service) List(ctx context.Context, tenantID string, limit int) ([]Ticket, error) {
+	if limit < 1 || limit > 100 {
+		return nil, ErrInvalidInput
+	}
+	values, err := s.repository.List(ctx, tenantID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list tickets: %w", err)
+	}
+	return values, nil
 }
 
 func (s *Service) Close(
@@ -78,7 +89,7 @@ func (s *Service) Close(
 	value.Status = StatusClosed
 	value.Version++
 	value.UpdatedAt = time.Now().UTC()
-	updated, err := s.repository.Update(ctx, value, expectedVersion)
+	updated, err := s.repository.Update(ctx, tenantID, value, expectedVersion)
 	if err != nil {
 		return Ticket{}, fmt.Errorf("update ticket: %w", err)
 	}
@@ -90,5 +101,15 @@ func newID() (string, error) {
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(raw), nil
+	raw[6] = (raw[6] & 0x0f) | 0x40
+	raw[8] = (raw[8] & 0x3f) | 0x80
+	encoded := hex.EncodeToString(raw)
+	return fmt.Sprintf(
+		"%s-%s-%s-%s-%s",
+		encoded[0:8],
+		encoded[8:12],
+		encoded[12:16],
+		encoded[16:20],
+		encoded[20:32],
+	), nil
 }

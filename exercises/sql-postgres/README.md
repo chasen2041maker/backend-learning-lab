@@ -25,3 +25,9 @@ docker compose exec postgres psql -U lab -d backend_lab
 5. 在事务中记录 Webhook、更新工单并写 Outbox；
 6. 重复插入相同 provider/event_id，观察唯一冲突；
 7. 使用 `version` 实现乐观更新。
+
+## Outbox 恢复协议
+
+运行并逐句解释 `outbox-protocol.sql`。Publisher 使用短事务领取批次，网络发布期间不持有行锁；完成/失败更新必须匹配 `worker_id + lease_token`，否则旧 Worker 被 fencing 拒绝。连续失败采用有上限的指数退避，第 8 次进入 DLQ 状态。
+
+关键失败窗口是“消息已发布，但 `published_at` 尚未提交”。因此这里只能保证至少一次，消费者仍必须按 `event_id` 幂等。
