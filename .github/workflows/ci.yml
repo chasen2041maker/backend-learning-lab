@@ -14,8 +14,8 @@ jobs:
       run:
         working-directory: exercises/python-ticket-api
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -31,8 +31,8 @@ jobs:
       run:
         working-directory: exercises/go-ticket-api
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.22.x"
           cache-dependency-path: exercises/go-ticket-api/go.mod
