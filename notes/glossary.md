@@ -1,0 +1,27 @@
+# 后端术语表
+
+- **ACK**：消费者确认消息已经完成处理。
+- **ACID**：数据库事务的原子性、一致性、隔离性、持久性。
+- **BFF**：Backend For Frontend，为特定客户端提供入口和有限聚合。
+- **Cache Aside**：应用先查缓存，未命中再查事实源并回填。
+- **Consumer Group**：多个消费者协作处理同一 Stream。
+- **Cursor Pagination**：使用稳定排序键作为下一页位置。
+- **Deadline**：一个操作最晚必须结束的绝对时间边界。
+- **DLQ**：无法正常处理的消息隔离区，需要告警、诊断和重放流程。
+- **Fencing Token**：单调版本，阻止过期 Worker/锁持有者写入。
+- **Idempotency**：同一个操作重复执行，外部业务结果保持一致。
+- **Lease**：有过期时间的任务所有权，允许故障接管。
+- **Liveness**：进程是否需要重启。
+- **N+1**：一次列表查询后对每行再查询一次导致大量请求。
+- **Optimistic Lock**：通过 version 条件检测并发冲突。
+- **Outbox**：把业务变更和待发布事件写进同一数据库事务。
+- **Owner Service**：某类业务事实唯一允许写入的服务。
+- **Pending**：Redis Streams 已投递但未 ACK 的消息。
+- **Pessimistic Lock**：读取时锁定行，阻塞其他竞争事务。
+- **Readiness**：实例是否应该接收新流量。
+- **Request ID**：一次入口请求的关联标识。
+- **SLO**：面向用户体验的服务目标。
+- **SSRF**：服务端被诱导访问攻击者指定的内部/敏感地址。
+- **Trace ID**：跨服务调用链的关联标识。
+- **Transactional Outbox**：用本地数据库事务解决业务写入和消息发布双写。
+- **TTL**：Key/数据的过期时间。

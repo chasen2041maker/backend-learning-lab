@@ -1,0 +1,1 @@
+"""Layered FastAPI learning application."""
