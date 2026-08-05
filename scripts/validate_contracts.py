@@ -11,6 +11,9 @@ def load(relative: str) -> dict:
 
 
 def main() -> None:
+    requirements = (ROOT / "requirements-repo.lock").read_text(encoding="utf-8")
+    assert "redis==6.4.0" in requirements, "repository lock must include Redis tests"
+
     http = load("contracts/http-cases.json")
     assert http["contract_version"] == 1
     assert http["id_format"] == "uuid-v4"
@@ -63,6 +66,15 @@ def main() -> None:
     assert event["properties"]["event_id"]["format"] == "uuid"
     assert event["properties"]["occurred_at"]["format"] == "date-time"
     assert event["properties"]["payload"]["type"] == "object"
+    ticket_closed = event["$defs"]["ticketClosedV1Payload"]
+    assert set(ticket_closed["required"]) == {"ticket_id", "status", "version"}
+    assert ticket_closed["additionalProperties"] is False
+    assert "-4" in ticket_closed["properties"]["ticket_id"]["pattern"]
+    assert ticket_closed["properties"]["status"]["const"] == "closed"
+    assert ticket_closed["properties"]["version"] == {
+        "type": "integer",
+        "minimum": 1,
+    }
     print(f"contracts valid: {len(cases)} HTTP cases, {len(required)} event fields")
 
 

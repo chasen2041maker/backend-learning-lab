@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 
@@ -15,6 +17,13 @@ class UnsupportedEventVersion(InvalidEvent):
 
 
 @dataclass(frozen=True)
+class TicketClosedV1Payload:
+    ticket_id: str
+    status: Literal["closed"]
+    version: int
+
+
+@dataclass(frozen=True)
 class EventEnvelope:
     event_id: str
     event_type: str
@@ -23,7 +32,7 @@ class EventEnvelope:
     tenant_id: str
     request_id: str
     trace_id: str
-    payload: dict[str, object]
+    payload: TicketClosedV1Payload
 
 
 SUPPORTED_EVENT_VERSIONS = {"ticket.closed": frozenset({1})}
@@ -38,6 +47,11 @@ REQUIRED_FIELDS = frozenset(
         "trace_id",
         "payload",
     }
+)
+TICKET_CLOSED_V1_FIELDS = frozenset({"ticket_id", "status", "version"})
+UUID_V4_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.IGNORECASE,
 )
 
 
@@ -95,6 +109,8 @@ def parse_supported_event(raw: str) -> EventEnvelope:
             f"unsupported event version: {event_type} v{event_version}"
         )
 
+    parsed_payload = _parse_ticket_closed_v1_payload(payload)
+
     return EventEnvelope(
         event_id=event_id,
         event_type=event_type,
@@ -103,8 +119,30 @@ def parse_supported_event(raw: str) -> EventEnvelope:
         tenant_id=tenant_id,
         request_id=request_id,
         trace_id=trace_id,
-        payload=payload,
+        payload=parsed_payload,
     )
+
+
+def _parse_ticket_closed_v1_payload(
+    payload: dict[str, object],
+) -> TicketClosedV1Payload:
+    fields = frozenset(payload)
+    if fields != TICKET_CLOSED_V1_FIELDS:
+        missing = sorted(TICKET_CLOSED_V1_FIELDS - fields)
+        extra = sorted(fields - TICKET_CLOSED_V1_FIELDS)
+        raise InvalidEvent(
+            f"ticket.closed v1 payload fields are invalid: missing={missing}, extra={extra}"
+        )
+    ticket_id = payload["ticket_id"]
+    status = payload["status"]
+    version = payload["version"]
+    if not isinstance(ticket_id, str) or UUID_V4_PATTERN.fullmatch(ticket_id) is None:
+        raise InvalidEvent("ticket.closed v1 ticket_id must be a canonical UUID v4")
+    if status != "closed":
+        raise InvalidEvent("ticket.closed v1 status must be closed")
+    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+        raise InvalidEvent("ticket.closed v1 version must be a positive integer")
+    return TicketClosedV1Payload(ticket_id=ticket_id, status="closed", version=version)
 
 
 def _is_uuid(value: str) -> bool:

@@ -183,10 +183,11 @@ func decodeStrictJSON(w http.ResponseWriter, r *http.Request, target any) (strin
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
-		if strings.Contains(err.Error(), "unknown field") {
-			return "invalid_ticket_input", false
+		var syntaxError *json.SyntaxError
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.As(err, &syntaxError) {
+			return "invalid_json", false
 		}
-		return "invalid_json", false
+		return "invalid_ticket_input", false
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return "invalid_json", false

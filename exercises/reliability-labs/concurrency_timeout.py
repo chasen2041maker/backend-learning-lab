@@ -27,6 +27,7 @@ async def run_bounded(
         raise ValueError("limits must be positive")
     semaphore = asyncio.Semaphore(max_concurrency)
     deadline = asyncio.get_running_loop().time() + total_timeout_seconds
+    deadline_expired = asyncio.Event()
 
     async def run_one(
         name: str, call: Callable[[], Awaitable[str]]
@@ -34,13 +35,21 @@ async def run_bounded(
         deadline_limited = False
         try:
             async with semaphore:
+                if deadline_expired.is_set():
+                    return name, CallResult(value=None, error="deadline_exceeded")
                 remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
+                    deadline_expired.set()
                     return name, CallResult(value=None, error="deadline_exceeded")
                 deadline_limited = remaining <= per_call_timeout_seconds
-                value = await asyncio.wait_for(
-                    call(), timeout=min(per_call_timeout_seconds, remaining)
-                )
+                try:
+                    value = await asyncio.wait_for(
+                        call(), timeout=min(per_call_timeout_seconds, remaining)
+                    )
+                except TimeoutError:
+                    if deadline_limited:
+                        deadline_expired.set()
+                    raise
             return name, CallResult(value=value, error=None)
         except TimeoutError:
             error = (

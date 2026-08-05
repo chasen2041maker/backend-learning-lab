@@ -40,7 +40,11 @@ def valid_event(*, version: int = 1) -> str:
             "tenant_id": "tenant_demo",
             "request_id": "req_demo_001",
             "trace_id": "trace_demo_001",
-            "payload": {"ticket_id": "ticket_1"},
+            "payload": {
+                "ticket_id": "00000000-0000-4000-8000-000000000001",
+                "status": "closed",
+                "version": 2,
+            },
         }
     )
 
@@ -88,6 +92,50 @@ class StreamContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(redis.dead_letters), 1)
         self.assertIn("timezone", redis.dead_letters[0][1]["reason"])
         self.assertEqual(redis.acknowledged, [(STREAM, GROUP, "message-4")])
+
+    async def test_invalid_ticket_closed_payload_is_dead_lettered_without_effect(
+        self,
+    ) -> None:
+        invalid_payloads = (
+            {"status": "closed", "version": 2},
+            {"ticket_id": "not-a-uuid", "status": "closed", "version": 2},
+            {
+                "ticket_id": "00000000-0000-4000-8000-000000000001",
+                "status": "open",
+                "version": 2,
+            },
+            {
+                "ticket_id": "00000000-0000-4000-8000-000000000001",
+                "status": "closed",
+                "version": "2",
+            },
+            {
+                "ticket_id": "00000000-0000-4000-8000-000000000001",
+                "status": "closed",
+                "version": 0,
+            },
+            {
+                "ticket_id": "00000000-0000-4000-8000-000000000001",
+                "status": "closed",
+                "version": 2,
+                "secret": "unexpected",
+            },
+        )
+        for index, payload in enumerate(invalid_payloads):
+            with self.subTest(payload=payload):
+                redis = FakeRedis()
+                event = json.loads(valid_event())
+                event["payload"] = payload
+                message_id = f"invalid-{index}"
+                await process_entry(
+                    redis,
+                    message_id,
+                    {"event": json.dumps(event)},
+                    ack=True,
+                )
+                self.assertEqual(redis.markers, set())
+                self.assertEqual(len(redis.dead_letters), 1)
+                self.assertEqual(redis.acknowledged, [(STREAM, GROUP, message_id)])
 
 
 if __name__ == "__main__":

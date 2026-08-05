@@ -2,6 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/backend-learning-lab/event.schema.json",
   "title": "Backend Learning Lab Event Envelope v1",
+  "$defs": {
+    "ticketClosedV1Payload": {
+      "type": "object",
+      "required": ["ticket_id", "status", "version"],
+      "properties": {
+        "ticket_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        "status": {"const": "closed"},
+        "version": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    }
+  },
   "type": "object",
   "required": [
     "event_id",
@@ -23,5 +38,21 @@
     "trace_id": {"type": "string", "minLength": 1},
     "payload": {"type": "object"}
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {"const": "ticket.closed"},
+          "event_version": {"const": 1}
+        },
+        "required": ["event_type", "event_version"]
+      },
+      "then": {
+        "properties": {
+          "payload": {"$ref": "#/$defs/ticketClosedV1Payload"}
+        }
+      }
+    }
+  ]
 }

@@ -16,6 +16,10 @@ class Answer:
     source_ids: tuple[str, ...]
 
 
+class NoRelevantSources(LookupError):
+    """No tenant-visible document has a positive lexical match."""
+
+
 def answer_with_fake_rag(
     documents: list[Document],
     *,
@@ -28,10 +32,16 @@ def answer_with_fake_rag(
         raise ValueError("invalid RAG budget")
     terms = set(query.lower().split())
     allowed = [document for document in documents if document.tenant_id == tenant_id]
-    ranked = sorted(
-        allowed,
-        key=lambda document: len(terms.intersection(document.text.lower().split())),
-        reverse=True,
-    )
+    scored = [
+        (len(terms.intersection(document.text.lower().split())), document)
+        for document in allowed
+    ]
+    ranked = [
+        document
+        for score, document in sorted(scored, key=lambda item: item[0], reverse=True)
+        if score > 0
+    ]
+    if not ranked:
+        raise NoRelevantSources("no relevant sources")
     selected = tuple(document.id for document in ranked[:max_sources])
     return Answer(text="fake answer; inspect cited sources", source_ids=selected)

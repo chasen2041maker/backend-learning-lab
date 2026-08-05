@@ -3,5 +3,6 @@ FROM python:3.11.10-slim-bookworm@sha256:840e180ebcc6e5c8efab209c43f5e40fd2af98c
 WORKDIR /app
 COPY metrics_demo.py /app/metrics_demo.py
 USER 65532:65532
+ENV METRICS_HOST=0.0.0.0
 EXPOSE 8081
 CMD ["python", "/app/metrics_demo.py"]

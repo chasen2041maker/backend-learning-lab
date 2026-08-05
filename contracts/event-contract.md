@@ -1,6 +1,6 @@
 # 事件契约（v1）
 
-机器校验规则见 [event.schema.json](event.schema.json)。Producer 在写入 Stream 前构造完整 Envelope；Consumer 通过 `exercises/redis-lab/event_contract.py` 先校验 Envelope 和支持的事件版本，再执行业务副作用。
+机器校验规则见 [event.schema.json](event.schema.json)。Producer 在写入 Stream 前构造完整 Envelope；Consumer 通过 `exercises/redis-lab/event_contract.py` 先校验 Envelope、支持的事件版本及对应 payload，再执行业务副作用。`ticket.closed v1` payload 拒绝缺失或额外字段。
 
 ```json
 {

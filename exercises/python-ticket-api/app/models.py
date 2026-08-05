@@ -1,11 +1,26 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Generic, TypeVar
+from typing import Annotated, Generic, TypeVar
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
+
+UUID_V4_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def validate_uuid_v4_text(value: object) -> str:
+    if not isinstance(value, str) or UUID_V4_PATTERN.fullmatch(value) is None:
+        raise ValueError("ticket id must be a canonical UUID v4 string")
+    return value
+
+
+TicketID = Annotated[UUID, BeforeValidator(validate_uuid_v4_text)]
 
 
 class TicketStatus(StrEnum):
@@ -14,15 +29,17 @@ class TicketStatus(StrEnum):
 
 
 class StrictInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class TicketCreate(StrictInput):
     title: str = Field(min_length=1, max_length=200)
 
-    @field_validator("title")
+    @field_validator("title", mode="before")
     @classmethod
-    def title_must_not_be_blank(cls, value: str) -> str:
+    def trim_title_before_length_validation(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError("title must be a string")
         stripped = value.strip()
         if not stripped:
             raise ValueError("title must not be blank")

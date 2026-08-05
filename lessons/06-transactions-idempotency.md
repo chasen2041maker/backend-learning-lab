@@ -51,6 +51,10 @@ FOR UPDATE;
 5. 只有本地持久化成功才返回成功；
 6. 保留重放、审计和告警信息。
 
+`webhook_security.py` 的 Processor 只用于观察失败重试与并发去重。生产实现不能用
+进程内集合：必须用 PostgreSQL 的 `(provider, provider_event_id)` 唯一约束，并在同一事务中
+写入 Webhook 状态、业务变更和 Outbox；只有该事务提交后，事件才是 `applied`。
+
 ## 三个失败窗口
 
 1. **落库前宕机**：上游重试，事件尚未记录，可以重新处理；

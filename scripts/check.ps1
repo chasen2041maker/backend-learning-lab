@@ -22,12 +22,16 @@ function Invoke-NativeChecked {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $pythonRoot = Join-Path $repoRoot "exercises/python-ticket-api"
 $python = Join-Path $pythonRoot ".venv/Scripts/python.exe"
+$repoRequirements = Join-Path $repoRoot "requirements-repo.lock"
 $goRoot = Join-Path $repoRoot "exercises/go-ticket-api"
 $composeFile = Join-Path $repoRoot "exercises/infrastructure/docker-compose.yml"
 $env:GOCACHE = Join-Path $repoRoot ".go-cache"
 
 if (-not (Test-Path $python)) {
-    throw "Python venv missing. Create exercises/python-ticket-api/.venv and install requirements-dev.lock."
+    throw "Python venv missing. Create exercises/python-ticket-api/.venv and install requirements-repo.lock."
+}
+if (-not (Test-Path $repoRequirements)) {
+    throw "Repository dependency lock missing: $repoRequirements"
 }
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
     throw "Go is required for the repository check."

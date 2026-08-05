@@ -253,8 +253,10 @@ func TestHandlerAcceptsUnicodeCharacterLimitAndRequiresAuth(t *testing.T) {
 
 func TestSharedCreateContractCases(t *testing.T) {
 	type repeatTitle struct {
-		Text  string `json:"text"`
-		Count int    `json:"count"`
+		Text   string `json:"text"`
+		Count  int    `json:"count"`
+		Prefix string `json:"prefix"`
+		Suffix string `json:"suffix"`
 	}
 	type contractCase struct {
 		Name           string          `json:"name"`
@@ -296,7 +298,7 @@ func TestSharedCreateContractCases(t *testing.T) {
 			}
 			if test.RepeatTitle != nil {
 				body, err = json.Marshal(map[string]string{
-					"title": strings.Repeat(test.RepeatTitle.Text, test.RepeatTitle.Count),
+					"title": test.RepeatTitle.Prefix + strings.Repeat(test.RepeatTitle.Text, test.RepeatTitle.Count) + test.RepeatTitle.Suffix,
 				})
 				if err != nil {
 					t.Fatal(err)
@@ -400,6 +402,7 @@ func TestSharedEndpointContractCases(t *testing.T) {
 		SeedTitle       string `json:"seed_title"`
 		PrecloseVersion int64  `json:"preclose_version"`
 		ExpectedVersion int64  `json:"expected_version"`
+		RawBody         string `json:"raw_body"`
 		ExpectedStatus  int    `json:"expected_status"`
 		ExpectedCode    string `json:"expected_code"`
 	}
@@ -599,7 +602,11 @@ func TestSharedEndpointContractCases(t *testing.T) {
 					t.Fatalf("%s: preclose status=%d", test.Name, response.StatusCode)
 				}
 			}
-			request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets/"+ticketID+"/close", strings.NewReader(`{"expected_version":`+strconv.FormatInt(test.ExpectedVersion, 10)+`}`))
+			body := test.RawBody
+			if body == "" {
+				body = `{"expected_version":` + strconv.FormatInt(test.ExpectedVersion, 10) + `}`
+			}
+			request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets/"+ticketID+"/close", strings.NewReader(body))
 			if err != nil {
 				t.Fatal(err)
 			}

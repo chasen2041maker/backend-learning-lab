@@ -28,6 +28,8 @@ docker compose exec postgres psql -U lab -d backend_lab
 
 ## Outbox 恢复协议
 
-运行并逐句解释 `outbox-protocol.sql`。Publisher 使用短事务领取批次，网络发布期间不持有行锁；完成/失败更新必须匹配 `worker_id + lease_token`，否则旧 Worker 被 fencing 拒绝。连续失败采用有上限的指数退避，第 8 次进入 DLQ 状态。
+阅读并逐句解释 `outbox-protocol.sql`。其中 `:name` 是数据库驱动占位符参考，不能直接用 `psql \i` 执行。Publisher 使用短事务领取批次，网络发布期间不持有行锁；完成/失败更新必须匹配 `worker_id + lease_token`，否则旧 Worker 被 fencing 拒绝。连续失败采用有上限的指数退避，第 8 次进入 DLQ 状态。
+
+可执行的 PostgreSQL 验证位于 `tests/outbox-integration.sql`，覆盖 claim、lease expiry、reclaim、fencing、retry 和第 8 次进入 DLQ。
 
 关键失败窗口是“消息已发布，但 `published_at` 尚未提交”。因此这里只能保证至少一次，消费者仍必须按 `event_id` 幂等。

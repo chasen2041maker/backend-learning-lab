@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.encoders import jsonable_encoder
@@ -16,7 +16,7 @@ from .errors import (
     TicketStateConflict,
     TicketVersionConflict,
 )
-from .models import ApiResponse, Principal, Ticket, TicketClose, TicketCreate
+from .models import ApiResponse, Principal, Ticket, TicketClose, TicketCreate, TicketID
 from .repository import InMemoryTicketRepository, TicketRepository
 from .service import TicketService
 
@@ -82,7 +82,11 @@ def create_app(repository: TicketRepository | None = None) -> FastAPI:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         error_code = "invalid_ticket_input"
-        if any(error.get("type") == "json_invalid" for error in exc.errors()):
+        if any(
+            error.get("type") == "json_invalid"
+            or (error.get("type") == "missing" and error.get("loc") == ("body",))
+            for error in exc.errors()
+        ):
             error_code = "invalid_json"
         status_code = 400 if error_code == "invalid_json" else 422
         return JSONResponse(
@@ -135,7 +139,7 @@ def create_app(repository: TicketRepository | None = None) -> FastAPI:
 
     @app.get("/api/v1/tickets/{ticket_id}", response_model=ApiResponse[Ticket])
     async def get_ticket(
-        ticket_id: UUID,
+        ticket_id: TicketID,
         request: Request,
         principal: Principal = Depends(get_principal),
         ticket_service: TicketService = Depends(get_service),
@@ -160,7 +164,7 @@ def create_app(repository: TicketRepository | None = None) -> FastAPI:
 
     @app.post("/api/v1/tickets/{ticket_id}/close", response_model=ApiResponse[Ticket])
     async def close_ticket(
-        ticket_id: UUID,
+        ticket_id: TicketID,
         command: TicketClose,
         request: Request,
         principal: Principal = Depends(get_principal),

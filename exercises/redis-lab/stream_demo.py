@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -25,7 +26,7 @@ async def ensure_group(redis: Redis) -> None:
             raise
 
 
-async def produce(redis: Redis) -> None:
+async def produce(redis: Redis, *, invalid: bool = False) -> None:
     event_id = str(uuid4())
     payload = {
         "event_id": event_id,
@@ -35,8 +36,14 @@ async def produce(redis: Redis) -> None:
         "tenant_id": "tenant_demo",
         "request_id": f"req_{uuid4().hex}",
         "trace_id": uuid4().hex,
-        "payload": {"ticket_id": "ticket_1", "version": 2},
+        "payload": {
+            "ticket_id": str(uuid4()),
+            "status": "closed",
+            "version": 2,
+        },
     }
+    if invalid:
+        payload["payload"] = {"status": "closed", "version": 2}
     message_id = await redis.xadd(STREAM, {"event": json.dumps(payload)})
     print(f"produced message_id={message_id} event_id={event_id}")
 
@@ -133,17 +140,27 @@ async def reclaim(redis: Redis) -> None:
 
 
 async def main() -> None:
-    commands = {"produce", "consume", "consume-crash", "pending", "reclaim"}
+    commands = {
+        "produce",
+        "produce-invalid",
+        "consume",
+        "consume-crash",
+        "pending",
+        "reclaim",
+    }
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
         raise SystemExit(
             "usage: python stream_demo.py "
-            "[produce|consume|consume-crash|pending|reclaim]"
+            "[produce|produce-invalid|consume|consume-crash|pending|reclaim]"
         )
-    redis = Redis.from_url("redis://127.0.0.1:6379/0", decode_responses=True)
+    redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+    redis = Redis.from_url(redis_url, decode_responses=True)
     try:
         command = sys.argv[1]
         if command == "produce":
             await produce(redis)
+        elif command == "produce-invalid":
+            await produce(redis, invalid=True)
         elif command == "consume":
             await consume_once(redis)
         elif command == "consume-crash":

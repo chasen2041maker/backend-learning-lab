@@ -162,7 +162,11 @@ async def test_shared_create_contract_cases() -> None:
             else:
                 body = case.get("body")
                 if repeat := case.get("repeat_title"):
-                    body = {"title": repeat["text"] * repeat["count"]}
+                    body = {
+                        "title": repeat.get("prefix", "")
+                        + repeat["text"] * repeat["count"]
+                        + repeat.get("suffix", "")
+                    }
                 response = await client.post("/api/v1/tickets", headers=headers, json=body)
 
             assert response.status_code == case["expected_status"], case["name"]
@@ -244,8 +248,10 @@ async def test_shared_close_contract_cases() -> None:
                 assert preclosed.status_code == 200, case["name"]
             response = await client.post(
                 f"/api/v1/tickets/{ticket_id}/close",
-                headers=TOKEN_A,
-                json={"expected_version": case["expected_version"]},
+                headers={**TOKEN_A, "Content-Type": "application/json"},
+                content=case["raw_body"]
+                if "raw_body" in case
+                else json.dumps({"expected_version": case["expected_version"]}),
             )
             assert response.status_code == case["expected_status"], case["name"]
             assert response.json()["code"] == case["expected_code"], case["name"]

@@ -22,7 +22,7 @@ Python 与 Go 必须通过同一份机器可读用例：[http-cases.json](http-c
 }
 ```
 
-`code` 是稳定机器码；客户端不得解析 `message` 判断业务。所有成功和错误响应均返回相同的 `X-Request-ID` Header 与 `request_id` 字段。
+`code` 是稳定机器码；客户端不得解析 `message` 判断业务。除 `/health` 等 Probe 外，所有业务 API 的成功和错误响应均返回相同的 `X-Request-ID` Header 与 `request_id` 字段。
 
 ## 请求规则
 

@@ -1,22 +1,41 @@
 from __future__ import annotations
 
+import os
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-REQUESTS = 0
+HOST = os.environ.get("METRICS_HOST", "127.0.0.1")
+PORT = 8081
 READY = True
+
+
+class RequestCounter:
+    def __init__(self) -> None:
+        self._value = 0
+        self._lock = threading.Lock()
+
+    def increment(self) -> None:
+        with self._lock:
+            self._value += 1
+
+    def value(self) -> int:
+        with self._lock:
+            return self._value
+
+
+REQUESTS = RequestCounter()
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
-        global REQUESTS
-        REQUESTS += 1
+        REQUESTS.increment()
         if self.path == "/health":
             self._write(200, "ok\n")
         elif self.path == "/ready":
             self._write(200 if READY else 503, "ready\n" if READY else "not ready\n")
         elif self.path == "/metrics":
             body = "# TYPE lab_http_requests_total counter\n"
-            body += f"lab_http_requests_total {REQUESTS}\n"
+            body += f"lab_http_requests_total {REQUESTS.value()}\n"
             self._write(200, body, "text/plain; version=0.0.4")
         else:
             self._write(404, "not found\n")
@@ -34,6 +53,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("0.0.0.0", 8081), Handler)
-    print("metrics demo listening on http://127.0.0.1:8081")
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"metrics demo listening on http://{HOST}:{PORT}")
     server.serve_forever()

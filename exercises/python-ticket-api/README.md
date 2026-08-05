@@ -7,7 +7,7 @@
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.lock
+python -m pip install -r ..\..\requirements-repo.lock
 python -m pip install --no-deps -e .
 pytest
 uvicorn app.main:app --reload --port 8000

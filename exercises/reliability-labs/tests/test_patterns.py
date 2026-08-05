@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import threading
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -13,9 +15,15 @@ sys.path.insert(0, str(Path(__file__).parents[2] / "redis-lab"))
 from authorization import ForbiddenError, Principal, ToolCall, authorize_tool_call
 from concurrency_timeout import run_bounded
 from event_contract import InvalidEvent, UnsupportedEventVersion, parse_supported_event
-from fake_rag import Document, answer_with_fake_rag
+from fake_rag import Document, NoRelevantSources, answer_with_fake_rag
+from metrics_demo import HOST, RequestCounter
 from outbox_worker import InMemoryOutbox, OutboxState
-from webhook_security import InvalidWebhook, WebhookVerifier, signature
+from webhook_security import (
+    InvalidWebhook,
+    WebhookProcessor,
+    WebhookVerifier,
+    signature,
+)
 
 
 class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
@@ -93,42 +101,75 @@ class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
                 principal, ToolCall("ticket.close", "tenant_b", confirmed=True)
             )
 
-    async def test_webhook_uses_raw_bytes_window_and_dedup(self) -> None:
+    async def test_webhook_verifies_raw_bytes_window_and_extracts_event_id(
+        self,
+    ) -> None:
         secret = b"local-test-secret"
         raw = b'{"event_id":"evt_1"}'
         verifier = WebhookVerifier(secret)
         supplied = signature(secret, 1_000, raw)
-        self.assertTrue(
-            verifier.verify_and_record(
+        self.assertEqual(
+            verifier.verify_and_extract_event_id(
                 timestamp=1_000,
                 raw_body=raw,
                 supplied_signature=supplied,
                 now=1_001,
-            )
-        )
-        self.assertFalse(
-            verifier.verify_and_record(
-                timestamp=1_000,
-                raw_body=raw,
-                supplied_signature=supplied,
-                now=1_001,
-            )
+            ),
+            "evt_1",
         )
         changed_body = b'{"event_id":"evt_2"}'
         with self.assertRaises(InvalidWebhook):
-            verifier.verify_and_record(
+            verifier.verify_and_extract_event_id(
                 timestamp=1_000,
                 raw_body=changed_body,
                 supplied_signature=supplied,
                 now=1_001,
             )
         with self.assertRaises(InvalidWebhook):
-            verifier.verify_and_record(
+            verifier.verify_and_extract_event_id(
                 timestamp=1_000,
                 raw_body=raw,
                 supplied_signature=supplied,
                 now=2_000,
             )
+
+    async def test_webhook_processor_retries_failed_effect_then_deduplicates(
+        self,
+    ) -> None:
+        processor = WebhookProcessor()
+        calls = 0
+
+        def effect() -> None:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise RuntimeError("database unavailable")
+
+        with self.assertRaises(RuntimeError):
+            processor.process_once("evt_1", effect)
+        self.assertTrue(processor.process_once("evt_1", effect))
+        self.assertFalse(processor.process_once("evt_1", effect))
+        self.assertEqual(calls, 2)
+
+    async def test_webhook_processor_serializes_same_event(self) -> None:
+        processor = WebhookProcessor()
+        calls = 0
+        calls_lock = threading.Lock()
+
+        def effect() -> None:
+            nonlocal calls
+            with calls_lock:
+                calls += 1
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(
+                executor.map(
+                    lambda _: processor.process_once("evt_1", effect), range(2)
+                )
+            )
+
+        self.assertEqual(sorted(results), [False, True])
+        self.assertEqual(calls, 1)
 
     async def test_event_contract_rejects_invalid_and_unknown_versions(self) -> None:
         valid = (
@@ -136,11 +177,13 @@ class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
             '"event_type":"ticket.closed","event_version":1,'
             '"occurred_at":"2026-08-04T10:00:00Z","tenant_id":"tenant_demo",'
             '"request_id":"req_demo_001","trace_id":"trace_demo_001",'
-            '"payload":{"ticket_id":"ticket_1"}}'
+            '"payload":{"ticket_id":"00000000-0000-4000-8000-000000000001",'
+            '"status":"closed","version":2}}'
         )
         event = parse_supported_event(valid)
         self.assertEqual(event.event_type, "ticket.closed")
         self.assertEqual(event.event_version, 1)
+        self.assertEqual(event.payload.status, "closed")
 
         with self.assertRaises(InvalidEvent):
             parse_supported_event(valid.replace("tenant_demo", ""))
@@ -182,6 +225,29 @@ class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
             max_sources=1,
         )
         self.assertEqual(answer.source_ids, ("a",))
+
+    async def test_fake_rag_rejects_zero_relevance_without_citations(self) -> None:
+        with self.assertRaises(NoRelevantSources):
+            answer_with_fake_rag(
+                [Document("unrelated", "tenant_a", "reset password")],
+                tenant_id="tenant_a",
+                query="invoice refund",
+            )
+
+    async def test_fake_rag_does_not_cite_other_tenant_sources(self) -> None:
+        with self.assertRaises(NoRelevantSources):
+            answer_with_fake_rag(
+                [Document("secret-b", "tenant_b", "invoice refund")],
+                tenant_id="tenant_a",
+                query="invoice refund",
+            )
+
+    async def test_metrics_defaults_to_loopback_and_counts_concurrently(self) -> None:
+        self.assertEqual(HOST, "127.0.0.1")
+        counter = RequestCounter()
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            list(executor.map(lambda _: counter.increment(), range(1_000)))
+        self.assertEqual(counter.value(), 1_000)
 
 
 if __name__ == "__main__":

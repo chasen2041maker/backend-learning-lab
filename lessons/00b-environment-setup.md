@@ -27,7 +27,7 @@ cd exercises\python-ticket-api
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.lock
+python -m pip install -r ..\..\requirements-repo.lock
 python -m pip install --no-deps -e .
 pytest
 ```
@@ -37,7 +37,7 @@ pytest
 如果 PowerShell 阻止激活，可以不激活，直接执行：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock
+.\.venv\Scripts\python.exe -m pip install -r ..\..\requirements-repo.lock
 .\.venv\Scripts\python.exe -m pip install --no-deps -e .
 .\.venv\Scripts\python.exe -m pytest
 ```
