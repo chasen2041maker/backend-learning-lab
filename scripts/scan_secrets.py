@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
-SKIP_PARTS = {".git", ".venv", "__pycache__"}
+SKIP_PARTS = {".git", ".venv", "__pycache__", ".go-cache"}
 PATTERNS = {
     "private key": re.compile("BEGIN" + r" [A-Z ]*PRIVATE KEY"),
     "AWS access key": re.compile("AKIA" + r"[0-9A-Z]{16}"),

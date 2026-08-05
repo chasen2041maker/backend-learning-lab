@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHandlerCreateAndGet(t *testing.T) {
@@ -61,6 +63,47 @@ func TestHandlerCreateAndGet(t *testing.T) {
 	defer getResponse.Body.Close()
 	if getResponse.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", getResponse.StatusCode)
+	}
+}
+
+func TestHTTPHandlerHealthIsPublicAndAPIRequiresAuthentication(t *testing.T) {
+	handler := NewHTTPHandler(NewService(NewMemoryRepository()), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		wantStatus int
+		wantCode   string
+	}{
+		{name: "health is public", method: http.MethodGet, path: "/health", wantStatus: http.StatusOK},
+		{
+			name:       "ticket API requires authentication",
+			method:     http.MethodGet,
+			path:       "/api/v1/tickets",
+			wantStatus: http.StatusUnauthorized,
+			wantCode:   "authentication_required",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(test.method, test.path, nil)
+			handler.ServeHTTP(recorder, request)
+			if recorder.Code != test.wantStatus {
+				t.Fatalf("expected %d, got %d", test.wantStatus, recorder.Code)
+			}
+			if test.wantCode != "" {
+				var envelope struct {
+					Code string `json:"code"`
+				}
+				if err := json.NewDecoder(recorder.Body).Decode(&envelope); err != nil {
+					t.Fatal(err)
+				}
+				if envelope.Code != test.wantCode {
+					t.Fatalf("expected code %s, got %s", test.wantCode, envelope.Code)
+				}
+			}
+		})
 	}
 }
 
@@ -289,6 +332,291 @@ func TestSharedCreateContractCases(t *testing.T) {
 			}
 			if test.ExpectedStatus == http.StatusCreated && !uuidV4.MatchString(envelope.Data.ID) {
 				t.Fatalf("expected UUID v4, got %q", envelope.Data.ID)
+			}
+		})
+	}
+}
+
+func TestSharedEndpointContractsAreDeclared(t *testing.T) {
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate contract test file")
+	}
+	contractPath := filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "..", "contracts", "http-cases.json")
+	content, err := os.ReadFile(contractPath)
+	if err != nil {
+		t.Fatalf("read shared contract: %v", err)
+	}
+	var contract struct {
+		HealthCases []json.RawMessage `json:"health_cases"`
+		GetCases    []json.RawMessage `json:"get_cases"`
+		ListCases   []json.RawMessage `json:"list_cases"`
+		CloseCases  []json.RawMessage `json:"close_cases"`
+	}
+	if err := json.Unmarshal(content, &contract); err != nil {
+		t.Fatalf("decode shared contract: %v", err)
+	}
+	for name, cases := range map[string][]json.RawMessage{
+		"health": contract.HealthCases,
+		"get":    contract.GetCases,
+		"list":   contract.ListCases,
+		"close":  contract.CloseCases,
+	} {
+		if len(cases) == 0 {
+			t.Errorf("%s endpoint contract cases are missing", name)
+		}
+	}
+}
+
+func TestSharedEndpointContractCases(t *testing.T) {
+	type healthCase struct {
+		Name           string `json:"name"`
+		Authorization  bool   `json:"authorization"`
+		ExpectedStatus int    `json:"expected_status"`
+		ExpectedBody   struct {
+			Status string `json:"status"`
+		} `json:"expected_body"`
+	}
+	type getCase struct {
+		Name           string `json:"name"`
+		TicketID       string `json:"ticket_id"`
+		SeedTitle      string `json:"seed_title"`
+		SeedTenant     string `json:"seed_tenant"`
+		RequestTenant  string `json:"request_tenant"`
+		ExpectedStatus int    `json:"expected_status"`
+		ExpectedCode   string `json:"expected_code"`
+	}
+	type listCase struct {
+		Name           string   `json:"name"`
+		SeedTitles     []string `json:"seed_titles"`
+		Limit          int      `json:"limit"`
+		ExpectedStatus int      `json:"expected_status"`
+		ExpectedCode   string   `json:"expected_code"`
+		ExpectedTitles []string `json:"expected_titles"`
+	}
+	type closeCase struct {
+		Name            string `json:"name"`
+		TicketID        string `json:"ticket_id"`
+		SeedTitle       string `json:"seed_title"`
+		PrecloseVersion int64  `json:"preclose_version"`
+		ExpectedVersion int64  `json:"expected_version"`
+		ExpectedStatus  int    `json:"expected_status"`
+		ExpectedCode    string `json:"expected_code"`
+	}
+	var contract struct {
+		HealthCases []healthCase `json:"health_cases"`
+		GetCases    []getCase    `json:"get_cases"`
+		ListCases   []listCase   `json:"list_cases"`
+		CloseCases  []closeCase  `json:"close_cases"`
+	}
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate contract test file")
+	}
+	contractPath := filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "..", "contracts", "http-cases.json")
+	content, err := os.ReadFile(contractPath)
+	if err != nil {
+		t.Fatalf("read shared contract: %v", err)
+	}
+	if err := json.Unmarshal(content, &contract); err != nil {
+		t.Fatalf("decode shared contract: %v", err)
+	}
+
+	t.Run("health", func(t *testing.T) {
+		server := httptest.NewServer(NewHTTPHandler(NewService(NewMemoryRepository()), slog.New(slog.NewTextHandler(io.Discard, nil))))
+		t.Cleanup(server.Close)
+		for _, test := range contract.HealthCases {
+			request, err := http.NewRequest(http.MethodGet, server.URL+"/health", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.Authorization {
+				request.Header.Set("Authorization", "Bearer lab-token-tenant-a")
+			}
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			if response.StatusCode != test.ExpectedStatus {
+				t.Fatalf("%s: expected %d, got %d", test.Name, test.ExpectedStatus, response.StatusCode)
+			}
+			var body struct {
+				Status string `json:"status"`
+			}
+			if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if body.Status != test.ExpectedBody.Status {
+				t.Fatalf("%s: expected body status %q, got %q", test.Name, test.ExpectedBody.Status, body.Status)
+			}
+		}
+	})
+
+	t.Run("get", func(t *testing.T) {
+		for _, test := range contract.GetCases {
+			server := httptest.NewServer(NewHTTPHandler(NewService(NewMemoryRepository()), slog.New(slog.NewTextHandler(io.Discard, nil))))
+			t.Cleanup(server.Close)
+			ticketID := test.TicketID
+			if test.SeedTitle != "" {
+				request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets", strings.NewReader(`{"title":"`+test.SeedTitle+`"}`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				seedToken := "lab-token-tenant-b"
+				if test.SeedTenant == "tenant_a" {
+					seedToken = "lab-token-tenant-a"
+				}
+				request.Header.Set("Authorization", "Bearer "+seedToken)
+				response, err := http.DefaultClient.Do(request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var created struct {
+					Data Ticket `json:"data"`
+				}
+				if err := json.NewDecoder(response.Body).Decode(&created); err != nil {
+					t.Fatal(err)
+				}
+				response.Body.Close()
+				ticketID = created.Data.ID
+			}
+			request, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/tickets/"+ticketID, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			requestToken := "lab-token-tenant-a"
+			if test.RequestTenant == "tenant_b" {
+				requestToken = "lab-token-tenant-b"
+			}
+			request.Header.Set("Authorization", "Bearer "+requestToken)
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			var envelope struct {
+				Code string `json:"code"`
+			}
+			if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
+				t.Fatal(err)
+			}
+			if response.StatusCode != test.ExpectedStatus || envelope.Code != test.ExpectedCode {
+				t.Fatalf("%s: got status=%d code=%s", test.Name, response.StatusCode, envelope.Code)
+			}
+		}
+	})
+
+	for _, test := range contract.ListCases {
+		test := test
+		t.Run("list/"+test.Name, func(t *testing.T) {
+			server := httptest.NewServer(NewHTTPHandler(NewService(NewMemoryRepository()), slog.New(slog.NewTextHandler(io.Discard, nil))))
+			t.Cleanup(server.Close)
+			for index, title := range test.SeedTitles {
+				if index > 0 {
+					time.Sleep(time.Millisecond)
+				}
+				request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets", strings.NewReader(`{"title":"`+title+`"}`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				request.Header.Set("Authorization", "Bearer lab-token-tenant-a")
+				response, err := http.DefaultClient.Do(request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				response.Body.Close()
+			}
+			request, err := http.NewRequest(http.MethodGet, server.URL+"/api/v1/tickets?limit="+strconv.Itoa(test.Limit), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Header.Set("Authorization", "Bearer lab-token-tenant-a")
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			var envelope struct {
+				Code string   `json:"code"`
+				Data []Ticket `json:"data"`
+			}
+			if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
+				t.Fatal(err)
+			}
+			if response.StatusCode != test.ExpectedStatus || envelope.Code != test.ExpectedCode {
+				t.Fatalf("%s: got status=%d code=%s", test.Name, response.StatusCode, envelope.Code)
+			}
+			if len(test.ExpectedTitles) > 0 {
+				got := make([]string, 0, len(envelope.Data))
+				for _, value := range envelope.Data {
+					got = append(got, value.Title)
+				}
+				if strings.Join(got, "\x00") != strings.Join(test.ExpectedTitles, "\x00") {
+					t.Fatalf("%s: expected titles %v, got %v", test.Name, test.ExpectedTitles, got)
+				}
+			}
+		})
+	}
+
+	for _, test := range contract.CloseCases {
+		test := test
+		t.Run("close/"+test.Name, func(t *testing.T) {
+			server := httptest.NewServer(NewHTTPHandler(NewService(NewMemoryRepository()), slog.New(slog.NewTextHandler(io.Discard, nil))))
+			t.Cleanup(server.Close)
+			ticketID := test.TicketID
+			if test.SeedTitle != "" {
+				request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets", strings.NewReader(`{"title":"`+test.SeedTitle+`"}`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				request.Header.Set("Authorization", "Bearer lab-token-tenant-a")
+				response, err := http.DefaultClient.Do(request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var created struct {
+					Data Ticket `json:"data"`
+				}
+				if err := json.NewDecoder(response.Body).Decode(&created); err != nil {
+					t.Fatal(err)
+				}
+				response.Body.Close()
+				ticketID = created.Data.ID
+			}
+			if test.PrecloseVersion > 0 {
+				request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets/"+ticketID+"/close", strings.NewReader(`{"expected_version":`+strconv.FormatInt(test.PrecloseVersion, 10)+`}`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				request.Header.Set("Authorization", "Bearer lab-token-tenant-a")
+				response, err := http.DefaultClient.Do(request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				response.Body.Close()
+				if response.StatusCode != http.StatusOK {
+					t.Fatalf("%s: preclose status=%d", test.Name, response.StatusCode)
+				}
+			}
+			request, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/tickets/"+ticketID+"/close", strings.NewReader(`{"expected_version":`+strconv.FormatInt(test.ExpectedVersion, 10)+`}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Header.Set("Authorization", "Bearer lab-token-tenant-a")
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			var envelope struct {
+				Code string `json:"code"`
+			}
+			if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
+				t.Fatal(err)
+			}
+			if response.StatusCode != test.ExpectedStatus || envelope.Code != test.ExpectedCode {
+				t.Fatalf("%s: got status=%d code=%s", test.Name, response.StatusCode, envelope.Code)
 			}
 		})
 	}

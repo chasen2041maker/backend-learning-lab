@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestServiceCreateGetClose(t *testing.T) {
@@ -78,5 +79,27 @@ func TestServiceRejectsStaleVersion(t *testing.T) {
 	_, err = service.Close(context.Background(), created.ID, "tenant_a", 99)
 	if !errors.Is(err, ErrVersionConflict) {
 		t.Fatalf("expected version conflict, got %v", err)
+	}
+}
+
+func TestServiceListsNewestTicketsFirstBeforeApplyingLimit(t *testing.T) {
+	service := NewService(NewMemoryRepository())
+	ctx := context.Background()
+	first, err := service.Create(ctx, "tenant_a", CreateInput{Title: "First"})
+	if err != nil {
+		t.Fatalf("create first ticket: %v", err)
+	}
+	time.Sleep(time.Millisecond)
+	second, err := service.Create(ctx, "tenant_a", CreateInput{Title: "Second"})
+	if err != nil {
+		t.Fatalf("create second ticket: %v", err)
+	}
+
+	values, err := service.List(ctx, "tenant_a", 1)
+	if err != nil {
+		t.Fatalf("list tickets: %v", err)
+	}
+	if len(values) != 1 || values[0].ID != second.ID {
+		t.Fatalf("expected newest ticket %s, got %+v (first was %s)", second.ID, values, first.ID)
 	}
 }

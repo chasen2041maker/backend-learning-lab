@@ -31,6 +31,7 @@ Python 与 Go 必须通过同一份机器可读用例：[http-cases.json](http-c
 - `title` 去除首尾空白后长度为 1～200 个 Unicode code point，不按 UTF-8 字节数计算。
 - 工单 ID 使用 RFC 4122 UUID v4 字符串。
 - 列表 `limit` 默认为 20，范围 1～100。
+- 列表结果按 `created_at DESC, id DESC` 排序后再应用 `limit`。
 
 ## 端点
 

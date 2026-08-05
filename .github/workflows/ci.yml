@@ -69,5 +69,6 @@ jobs:
           python exercises/redis-lab/stream_demo.py pending
           python exercises/redis-lab/stream_demo.py reclaim
           python exercises/redis-lab/stream_demo.py pending | grep '"pending": 0'
+          python -m unittest discover -s exercises/redis-lab/tests -v
       - name: Build pinned learning image
         run: docker build --tag backend-learning-metrics:0.1.0 exercises/reliability-labs

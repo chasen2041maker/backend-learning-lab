@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -23,8 +24,27 @@ type response struct {
 	Data      any    `json:"data"`
 }
 
+var uuidV4Pattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+
 func NewHandler(service *Service, logger *slog.Logger) *Handler {
 	return &Handler{service: service, logger: logger}
+}
+
+// NewHTTPHandler keeps public health checks outside the authenticated API tree.
+func NewHTTPHandler(service *Service, logger *slog.Logger) http.Handler {
+	root := http.NewServeMux()
+	root.HandleFunc("GET /health", health)
+
+	api := http.NewServeMux()
+	NewHandler(service, logger).Register(api)
+	root.Handle("/api/v1/", Authenticate(api))
+	return RequestContext(root)
+}
+
+func health(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -67,7 +87,12 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		h.handleError(w, r, err)
 		return
 	}
-	value, err := h.service.Get(r.Context(), r.PathValue("id"), principal.TenantID)
+	id := r.PathValue("id")
+	if !uuidV4Pattern.MatchString(id) {
+		writeError(w, r, http.StatusUnprocessableEntity, "invalid_ticket_input", "invalid ticket id")
+		return
+	}
+	value, err := h.service.Get(r.Context(), id, principal.TenantID)
 	if err != nil {
 		h.handleError(w, r, err)
 		return
@@ -116,9 +141,14 @@ func (h *Handler) close(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, status, code, "invalid request body")
 		return
 	}
+	id := r.PathValue("id")
+	if !uuidV4Pattern.MatchString(id) {
+		writeError(w, r, http.StatusUnprocessableEntity, "invalid_ticket_input", "invalid ticket id")
+		return
+	}
 	value, err := h.service.Close(
 		r.Context(),
-		r.PathValue("id"),
+		id,
 		principal.TenantID,
 		input.ExpectedVersion,
 	)

@@ -90,4 +90,4 @@ go test ./...
 go run ./cmd/server
 ```
 
-基础设施到第 5 周再启动，不要第一天同时安装和调试全部组件。整仓检查可在根目录运行 `powershell -File scripts/check.ps1`。
+基础设施到第 5 周再启动，不要第一天同时安装和调试全部组件。整仓检查可在根目录运行 `powershell -File scripts/check.ps1`；脚本会显式检查 Git、Python、Go 和 Docker 的退出码，失败时不会输出“全部通过”。

@@ -21,7 +21,7 @@ python stream_demo.py consume
 
 ## `stream_demo.py`
 
-生产一条完整 `ticket.closed` Envelope，再用 Consumer Group 读取、演示幂等标记并 ACK。脚本中的 Redis 幂等标记只用于观察重复消息；生产业务必须把 `processed_events` 与业务写入放在同一个 PostgreSQL 事务中，不能用这个演示 Key 代替事实库事务。
+生产一条完整 `ticket.closed` Envelope，再用 Consumer Group 读取、校验事件版本、演示幂等标记并 ACK。非法 Envelope 或未知版本会写入 `lab:events:dlq` 后再 ACK。脚本中的 Redis 幂等标记只用于观察重复消息；生产业务必须把 `processed_events` 与业务写入放在同一个 PostgreSQL 事务中，不能用这个演示 Key 代替事实库事务。
 
 按下面顺序完成一次可重复的宕机恢复实验：
 

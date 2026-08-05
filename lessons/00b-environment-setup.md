@@ -6,7 +6,7 @@
 - VS Code；
 - Python 3.11 或更高版本；
 - Go 1.22 或更高版本；
-- PowerShell 7（Windows PowerShell 也可完成基础练习）。
+- PowerShell 7（Windows PowerShell 也可完成基础练习和整仓检查）。
 
 检查：
 
@@ -40,6 +40,12 @@ pytest
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock
 .\.venv\Scripts\python.exe -m pip install --no-deps -e .
 .\.venv\Scripts\python.exe -m pytest
+```
+
+整仓检查脚本兼容 Windows PowerShell 5.1 和 PowerShell 7，并会显式检查每个原生命令的退出码：
+
+```powershell
+powershell -File scripts/check.ps1
 ```
 
 ## Go 环境

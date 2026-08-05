@@ -59,5 +59,91 @@
       "expected_status": 401,
       "expected_code": "authentication_required"
     }
+  ],
+  "health_cases": [
+    {
+      "name": "health without authentication",
+      "authorization": false,
+      "expected_status": 200,
+      "expected_body": {"status": "ok"}
+    }
+  ],
+  "get_cases": [
+    {
+      "name": "missing ticket",
+      "authorization": true,
+      "ticket_id": "00000000-0000-4000-8000-000000000001",
+      "expected_status": 404,
+      "expected_code": "ticket_not_found"
+    },
+    {
+      "name": "cross tenant ticket is hidden",
+      "authorization": true,
+      "seed_title": "Private ticket",
+      "seed_tenant": "tenant_a",
+      "request_tenant": "tenant_b",
+      "expected_status": 404,
+      "expected_code": "ticket_not_found"
+    },
+    {
+      "name": "invalid ticket id",
+      "authorization": true,
+      "ticket_id": "not-a-uuid",
+      "expected_status": 422,
+      "expected_code": "invalid_ticket_input"
+    }
+  ],
+  "list_cases": [
+    {
+      "name": "newest first with limit",
+      "authorization": true,
+      "seed_titles": ["First", "Second"],
+      "limit": 1,
+      "expected_status": 200,
+      "expected_code": "ok",
+      "expected_titles": ["Second"]
+    },
+    {
+      "name": "limit below minimum",
+      "authorization": true,
+      "limit": 0,
+      "expected_status": 422,
+      "expected_code": "invalid_ticket_input"
+    }
+  ],
+  "close_cases": [
+    {
+      "name": "missing ticket",
+      "authorization": true,
+      "ticket_id": "00000000-0000-4000-8000-000000000001",
+      "expected_version": 1,
+      "expected_status": 404,
+      "expected_code": "ticket_not_found"
+    },
+    {
+      "name": "invalid expected version",
+      "authorization": true,
+      "seed_title": "Close me",
+      "expected_version": 0,
+      "expected_status": 422,
+      "expected_code": "invalid_ticket_input"
+    },
+    {
+      "name": "stale version",
+      "authorization": true,
+      "seed_title": "Versioned ticket",
+      "expected_version": 99,
+      "expected_status": 409,
+      "expected_code": "ticket_version_conflict"
+    },
+    {
+      "name": "duplicate close",
+      "authorization": true,
+      "seed_title": "Close once",
+      "preclose_version": 1,
+      "expected_version": 2,
+      "expected_status": 409,
+      "expected_code": "ticket_state_conflict"
+    }
   ]
 }

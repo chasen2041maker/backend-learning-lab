@@ -6,10 +6,12 @@ import sys
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from event_contract import InvalidEvent, UnsupportedEventVersion, parse_supported_event
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 STREAM = "lab:events"
+DLQ_STREAM = "lab:events:dlq"
 GROUP = "lab-consumers"
 CONSUMER = "learner-1"
 RECOVERY_CONSUMER = "learner-recovery"
@@ -46,13 +48,22 @@ async def process_entry(
     *,
     ack: bool,
 ) -> None:
-    event = json.loads(fields["event"])
-    idempotency_key = f"lab:processed:{GROUP}:{event['event_id']}"
+    raw_event = fields.get("event", "")
+    try:
+        event = parse_supported_event(raw_event)
+    except UnsupportedEventVersion as exc:
+        await dead_letter(redis, message_id, raw_event, str(exc))
+        return
+    except InvalidEvent as exc:
+        await dead_letter(redis, message_id, raw_event, str(exc))
+        return
+
+    idempotency_key = f"lab:processed:{GROUP}:{event.event_id}"
     already_processed = await redis.exists(idempotency_key)
     if already_processed:
-        print(f"duplicate event {event['event_id']}: skip business effect")
+        print(f"duplicate event {event.event_id}: skip business effect")
     else:
-        print(f"apply demo effect for {event['event_id']}")
+        print(f"apply demo effect for {event.event_id}")
         print(
             "production: commit business effect + processed_events in one PostgreSQL transaction"
         )
@@ -63,6 +74,17 @@ async def process_entry(
         print(f"acked message_id={message_id}")
     else:
         print(f"simulated crash before ACK; message_id={message_id} remains pending")
+
+
+async def dead_letter(
+    redis: Redis, message_id: str, raw_event: str, reason: str
+) -> None:
+    await redis.xadd(
+        DLQ_STREAM,
+        {"source_message_id": message_id, "reason": reason, "event": raw_event},
+    )
+    await redis.xack(STREAM, GROUP, message_id)
+    print(f"dead-lettered message_id={message_id}: {reason}")
 
 
 async def consume_once(redis: Redis, *, ack: bool = True) -> None:

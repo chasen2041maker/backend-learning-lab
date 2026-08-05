@@ -2,6 +2,7 @@ package ticket
 
 import (
 	"context"
+	"sort"
 	"sync"
 )
 
@@ -58,10 +59,16 @@ func (r *MemoryRepository) List(
 	for _, value := range r.tickets {
 		if value.TenantID == tenantID {
 			result = append(result, value)
-			if len(result) == limit {
-				break
-			}
 		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].CreatedAt.Equal(result[j].CreatedAt) {
+			return result[i].ID > result[j].ID
+		}
+		return result[i].CreatedAt.After(result[j].CreatedAt)
+	})
+	if len(result) > limit {
+		result = result[:limit]
 	}
 	return result, nil
 }

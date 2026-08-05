@@ -27,6 +27,8 @@ result, err := client.Fetch(ctx)
 
 一次请求需要查询 100 个股票，不应直接启动 100 个无限制调用。使用 semaphore、worker pool 或批量接口，并让并发上限来自容量验证。
 
+单个下游 timeout 不等于整次请求 deadline。排队等待 semaphore 也会消耗请求预算；实验代码同时要求 `per_call_timeout_seconds` 和 `total_timeout_seconds`，总 deadline 到期时必须取消尚未开始和正在运行的任务。
+
 ## 重试条件
 
 只对暂时性错误重试，例如部分 429、502、503、网络超时。参数错误和权限错误不应重试。

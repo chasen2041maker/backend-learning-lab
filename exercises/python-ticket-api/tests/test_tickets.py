@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from uuid import UUID
@@ -170,3 +171,81 @@ async def test_shared_create_contract_cases() -> None:
             if response.status_code == 201:
                 ticket_id = UUID(envelope["data"]["id"])
                 assert ticket_id.version == 4, case["name"]
+
+
+async def test_shared_health_contract_cases() -> None:
+    contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    app = create_app(InMemoryTicketRepository())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        for case in contract["health_cases"]:
+            headers = TOKEN_A if case["authorization"] else {}
+            response = await client.get("/health", headers=headers)
+            assert response.status_code == case["expected_status"], case["name"]
+            assert response.json() == case["expected_body"], case["name"]
+
+
+async def test_shared_get_contract_cases() -> None:
+    contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    for case in contract["get_cases"]:
+        app = create_app(InMemoryTicketRepository())
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            ticket_id = case.get("ticket_id")
+            if title := case.get("seed_title"):
+                seed_headers = TOKEN_A if case.get("seed_tenant") == "tenant_a" else TOKEN_B
+                created = await client.post(
+                    "/api/v1/tickets", headers=seed_headers, json={"title": title}
+                )
+                ticket_id = created.json()["data"]["id"]
+            request_headers = TOKEN_B if case.get("request_tenant") == "tenant_b" else TOKEN_A
+            response = await client.get(f"/api/v1/tickets/{ticket_id}", headers=request_headers)
+            assert response.status_code == case["expected_status"], case["name"]
+            assert response.json()["code"] == case["expected_code"], case["name"]
+
+
+async def test_shared_list_contract_cases() -> None:
+    contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    for case in contract["list_cases"]:
+        app = create_app(InMemoryTicketRepository())
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            for index, title in enumerate(case.get("seed_titles", [])):
+                if index:
+                    await asyncio.sleep(0.001)
+                await client.post("/api/v1/tickets", headers=TOKEN_A, json={"title": title})
+            response = await client.get(
+                "/api/v1/tickets",
+                headers=TOKEN_A,
+                params={"limit": case.get("limit", 20)},
+            )
+            assert response.status_code == case["expected_status"], case["name"]
+            assert response.json()["code"] == case["expected_code"], case["name"]
+            if "expected_titles" in case:
+                assert [ticket["title"] for ticket in response.json()["data"]] == case[
+                    "expected_titles"
+                ], case["name"]
+
+
+async def test_shared_close_contract_cases() -> None:
+    contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    for case in contract["close_cases"]:
+        app = create_app(InMemoryTicketRepository())
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            ticket_id = case.get("ticket_id")
+            if title := case.get("seed_title"):
+                created = await client.post(
+                    "/api/v1/tickets", headers=TOKEN_A, json={"title": title}
+                )
+                ticket_id = created.json()["data"]["id"]
+            if preclose_version := case.get("preclose_version"):
+                preclosed = await client.post(
+                    f"/api/v1/tickets/{ticket_id}/close",
+                    headers=TOKEN_A,
+                    json={"expected_version": preclose_version},
+                )
+                assert preclosed.status_code == 200, case["name"]
+            response = await client.post(
+                f"/api/v1/tickets/{ticket_id}/close",
+                headers=TOKEN_A,
+                json={"expected_version": case["expected_version"]},
+            )
+            assert response.status_code == case["expected_status"], case["name"]
+            assert response.json()["code"] == case["expected_code"], case["name"]

@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import time
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
+sys.path.insert(0, str(Path(__file__).parents[2] / "redis-lab"))
 
 from authorization import ForbiddenError, Principal, ToolCall, authorize_tool_call
 from concurrency_timeout import run_bounded
+from event_contract import InvalidEvent, UnsupportedEventVersion, parse_supported_event
 from fake_rag import Document, answer_with_fake_rag
 from outbox_worker import InMemoryOutbox, OutboxState
 from webhook_security import InvalidWebhook, WebhookVerifier, signature
@@ -37,10 +40,43 @@ class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
                 "slow": lambda: call(0.2),
             },
             max_concurrency=2,
-            timeout_seconds=0.05,
+            per_call_timeout_seconds=0.05,
+            total_timeout_seconds=0.5,
         )
         self.assertLessEqual(peak, 2)
         self.assertEqual(results["slow"].error, "timeout")
+
+    async def test_concurrency_timeout_has_total_deadline_and_cancels_queued_work(
+        self,
+    ) -> None:
+        started = 0
+        cancelled = 0
+
+        async def slow_call() -> str:
+            nonlocal started, cancelled
+            started += 1
+            try:
+                await asyncio.sleep(1)
+                return "ok"
+            finally:
+                cancelled += 1
+
+        started_at = time.monotonic()
+        results = await run_bounded(
+            {str(index): slow_call for index in range(10)},
+            max_concurrency=1,
+            per_call_timeout_seconds=0.2,
+            total_timeout_seconds=0.08,
+        )
+        elapsed = time.monotonic() - started_at
+
+        self.assertLess(elapsed, 0.2)
+        self.assertEqual(set(results), {str(index) for index in range(10)})
+        self.assertTrue(
+            all(result.error == "deadline_exceeded" for result in results.values())
+        )
+        self.assertEqual(started, 1)
+        self.assertEqual(cancelled, 1)
 
     async def test_agent_side_effect_needs_permission_confirmation_and_idempotency(
         self,
@@ -64,7 +100,6 @@ class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
         supplied = signature(secret, 1_000, raw)
         self.assertTrue(
             verifier.verify_and_record(
-                event_id="evt_1",
                 timestamp=1_000,
                 raw_body=raw,
                 supplied_signature=supplied,
@@ -73,20 +108,45 @@ class ReliabilityTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertFalse(
             verifier.verify_and_record(
-                event_id="evt_1",
                 timestamp=1_000,
                 raw_body=raw,
                 supplied_signature=supplied,
                 now=1_001,
             )
         )
+        changed_body = b'{"event_id":"evt_2"}'
         with self.assertRaises(InvalidWebhook):
             verifier.verify_and_record(
-                event_id="evt_2",
+                timestamp=1_000,
+                raw_body=changed_body,
+                supplied_signature=supplied,
+                now=1_001,
+            )
+        with self.assertRaises(InvalidWebhook):
+            verifier.verify_and_record(
                 timestamp=1_000,
                 raw_body=raw,
                 supplied_signature=supplied,
                 now=2_000,
+            )
+
+    async def test_event_contract_rejects_invalid_and_unknown_versions(self) -> None:
+        valid = (
+            '{"event_id":"3d5157f1-701f-4e4f-a817-73b3944a5c35",'
+            '"event_type":"ticket.closed","event_version":1,'
+            '"occurred_at":"2026-08-04T10:00:00Z","tenant_id":"tenant_demo",'
+            '"request_id":"req_demo_001","trace_id":"trace_demo_001",'
+            '"payload":{"ticket_id":"ticket_1"}}'
+        )
+        event = parse_supported_event(valid)
+        self.assertEqual(event.event_type, "ticket.closed")
+        self.assertEqual(event.event_version, 1)
+
+        with self.assertRaises(InvalidEvent):
+            parse_supported_event(valid.replace("tenant_demo", ""))
+        with self.assertRaises(UnsupportedEventVersion):
+            parse_supported_event(
+                valid.replace('"event_version":1', '"event_version":999')
             )
 
     async def test_outbox_reclaim_fences_old_worker_and_reaches_dlq(self) -> None:

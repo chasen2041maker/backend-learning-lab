@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,22 +14,20 @@ import (
 )
 
 func main() {
+	if err := run("127.0.0.1:8080"); err != nil {
+		slog.Error("server failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(address string) error {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	repository := ticket.NewMemoryRepository()
 	service := ticket.NewService(repository)
-	handler := ticket.NewHandler(service, logger)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
-	handler.Register(mux)
 
 	server := &http.Server{
-		Addr:              "127.0.0.1:8080",
-		Handler:           ticket.RequestContext(ticket.Authenticate(mux)),
+		Addr:              address,
+		Handler:           ticket.NewHTTPHandler(service, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -51,8 +50,7 @@ func main() {
 	select {
 	case err := <-serverError:
 		if err != nil && err != http.ErrServerClosed {
-			logger.Error("server stopped unexpectedly", "error", err)
-			return
+			return fmt.Errorf("listen: %w", err)
 		}
 	case <-shutdownSignal.Done():
 		logger.Info("shutdown signal received")
@@ -61,8 +59,8 @@ func main() {
 	shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(shutdownContext); err != nil {
-		logger.Error("graceful shutdown failed", "error", err)
-		return
+		return fmt.Errorf("graceful shutdown: %w", err)
 	}
 	logger.Info("server stopped")
+	return nil
 }
