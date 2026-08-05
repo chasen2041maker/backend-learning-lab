@@ -18,28 +18,37 @@ go version
 code --version
 ```
 
-## Python 虚拟环境
+## 使用当前 Python 环境
 
-虚拟环境让每个项目拥有自己的依赖，不污染其他项目：
+本仓库直接使用 PATH 中的 `python`，不要求创建虚拟环境。先确认版本和解释器位置：
+
+```powershell
+python --version
+python -c "import sys; print(sys.executable)"
+```
+
+版本必须是 Python 3.11 或更高。随后安装整仓固定依赖和本地包：
 
 ```powershell
 cd exercises\python-ticket-api
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
 python -m pip install -r ..\..\requirements-repo.lock
 python -m pip install --no-deps -e .
-pytest
+python -m pytest
 ```
 
-先用 `python --version` 确认版本为 3.11+。如果系统安装了多个 Python，可改用 `py -3.11 -m venv .venv`；如果没有 `py` 命令，直接使用已加入 PATH 的 `python`。
-
-如果 PowerShell 阻止激活，可以不激活，直接执行：
+如果系统安装了多个 Python，确认 `python` 和 pip 属于同一个解释器：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r ..\..\requirements-repo.lock
-.\.venv\Scripts\python.exe -m pip install --no-deps -e .
-.\.venv\Scripts\python.exe -m pytest
+python -c "import sys; print(sys.executable)"
+python -m pip --version
+```
+
+不要混用裸 `pip`、`py -3.x` 和另一个路径下的 `python`。典型症状是包明明安装过，
+运行时却出现 `ModuleNotFoundError`，或二进制扩展文件名中的 Python 版本与
+`python --version` 不一致。此时用当前解释器重新安装：
+
+```powershell
+python -m pip install --force-reinstall -r ..\..\requirements-repo.lock
 ```
 
 整仓检查脚本兼容 Windows PowerShell 5.1 和 PowerShell 7，并会显式检查每个原生命令的退出码：

@@ -5,13 +5,13 @@
 ## 运行
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
 python -m pip install -r ..\..\requirements-repo.lock
 python -m pip install --no-deps -e .
-pytest
+python -m pytest
 uvicorn app.main:app --reload --port 8000
 ```
+
+这里直接使用当前 PATH 中的 Python 环境，不要求创建或激活虚拟环境。
 
 打开 `http://127.0.0.1:8000/docs`。
 

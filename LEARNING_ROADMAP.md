@@ -14,11 +14,13 @@
 
 ## 第 1 周：HTTP 请求生命周期（Python）
 
-- DNS/TCP/HTTP、反向代理、Handler、Service、数据库；
-- Method、Path、Header、Body、状态码、request ID；
-- 超时可能发生在哪一层。
+- 运行 Uvicorn，观察进程、监听地址和端口；
+- 用 curl 识别 Method、Path、Header、Body、状态码和 request ID；
+- 对比 connection refused、400、401、404、422 和 500；
+- 只跟踪当前 Handler、Service 与内存 Repository。
 
-验收：画出 `POST /tickets` 完整路径并标出三个失败点。
+验收：完成[第 1 课](lessons/01-request-lifecycle.md)与
+[请求观察实验](exercises/01-request-lifecycle/README.md)，保存六种失败的证据。
 
 ## 第 2 周：Python 后端基础
 
@@ -26,7 +28,8 @@
 - `async/await`、上下文管理与资源关闭；
 - Handler/Service/Repository 的职责。
 
-验收：不用 AI 新增 `priority` 字段并修复测试。
+验收：完成[第 2 课](lessons/02-python-backend-foundations.md)，只根据测试与三级提示为
+[Python starter](exercises/02-python-backend-foundations/README.md)新增 `priority`。
 
 ## 第 3 周：先测试再扩展 Python API
 
@@ -34,7 +37,8 @@
 - 输入验证、稳定错误码、未知异常 Envelope；
 - 状态机和乐观版本的第一版。
 
-验收：先写失败测试，再完成关闭工单与冲突处理。
+验收：完成[第 3 课](lessons/03-layered-service.md)，让
+[Service starter](exercises/03-layered-service/README.md)的四个失败测试逐个通过。
 
 ## 第 4 周：契约、身份与租户边界
 
@@ -42,7 +46,8 @@
 - Authentication 产生可信 Principal，Authorization 检查权限/owner/tenant；
 - 客户端不能自报租户；共享契约测试防止多实现漂移。
 
-验收：运行 `contracts/http-cases.json`，解释三条越权测试。
+验收：完成[第 4 课](lessons/04-api-contracts.md)与
+[契约读取实验](exercises/04-api-contracts/README.md)，解释 strict JSON、可信 Principal 和跨租户 404。
 
 ## 第 5 周：Docker 与本地依赖
 

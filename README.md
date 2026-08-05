@@ -15,7 +15,7 @@ Python 主线、Go 延后 1～2 个阶段复现：
 1. 阅读 [学习方式与第一天](lessons/00-start-here.md)。
 2. 按 [Windows 环境准备](lessons/00b-environment-setup.md) 检查 Python、Go、Git 和 Docker。
 3. 打开 [学习路线](LEARNING_ROADMAP.md)，每次只学习当前一周。
-4. 先运行 `exercises/python-ticket-api` 和 `exercises/go-ticket-api`。
+4. 从[第 1 课](lessons/01-request-lifecycle.md)启动 Python 服务，每学一小节就完成对应实验；Go 到第 8 周再开始。
 5. 完成练习后，在 [学习进度表](progress/README.md) 写下“我能独立解释什么”。
 6. 遇到问题或需要送审时，使用 [GPT 提问与整仓送审指南](HOW_TO_ASK_GPT.md)。
 
@@ -44,7 +44,7 @@ backend-learning-lab/
 
 你不需要背下所有 API，但应该能够：
 
-1. 画出一次请求从客户端、BFF、服务、数据库到响应的完整路径；
+1. 画出一次请求从客户端到当前服务响应的真实路径，并随课程逐步加入数据库等组件；
 2. 分清 Handler、Service、Repository 和 Domain 的职责；
 3. 写出带验证、错误码、分页和测试的 Python/Go API；
 4. 解释索引、事务、隔离级别、锁和数据库 owner；
@@ -73,14 +73,13 @@ Python：
 
 ```powershell
 cd exercises\python-ticket-api
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
 python -m pip install -r ..\..\requirements-repo.lock
 python -m pip install --no-deps -e .
-pytest
+python -m pytest
 ```
 
-如果 `python` 不是 3.11+，可在安装了 Python Launcher 的电脑上改用 `py -3.11`。
+这些命令直接使用当前 PATH 中的 Python 环境，不要求虚拟环境。先确认
+`python --version` 为 3.11+，并始终使用 `python -m pip` 安装到同一个解释器。
 
 Go：
 
