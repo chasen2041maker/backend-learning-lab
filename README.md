@@ -16,6 +16,32 @@
 
 因此，这个仓库既是教程，也是跨电脑可访问的个人后端知识库和实验室。
 
+## 新 AI / 新电脑：先从这里接棒
+
+如果这是一个新的 ChatGPT / Codex / AI 会话，不要先从第 0 课重新讲，也不要看到高级文件就假设已经掌握。
+
+按顺序读取：
+
+1. **[`LEARNER_PROFILE.md`](LEARNER_PROFILE.md)**：这个学习者应该怎么教、哪些概念只是“见过”而不是掌握；
+2. **[`progress/current-focus.md`](progress/current-focus.md)**：当前真正学到哪一段、下一步应该从哪里继续；
+3. **[`GROWTH_PATH.md`](GROWTH_PATH.md)**：从后端新手到“10 年开发成熟度”的长期能力阶梯；
+4. **[`LEARNING_ROADMAP.md`](LEARNING_ROADMAP.md)**：各后端知识之间的依赖关系；
+5. 再进入当前主题对应的 lesson / journal / exercise。
+
+当前进度文件永远只是接棒辅助。**最新对话中用户实际表现出来的理解程度优先。**
+
+长期目标不是“十年后才算完成”，而是逐步获得成熟工程师常见的能力：
+
+```text
+需求分析
+→ 最小正确设计
+→ 数据/身份/事务边界
+→ 并发/重复/失败推演
+→ 测试与观测证据
+→ 性能/可靠性/安全/成本权衡
+→ 系统演进和复杂度控制
+```
+
 ## 最重要的使用原则
 
 1. **问题驱动，不按日历驱动。** `LEARNING_ROADMAP.md` 是知识依赖图，不是“20 周必须完成”的计划。
@@ -28,6 +54,8 @@
 
 ```text
 backend-learning-lab/
+├─ LEARNER_PROFILE.md            # 长期教学画像：新 AI 先读
+├─ GROWTH_PATH.md                # 新手 -> 成熟高级工程师的能力阶梯
 ├─ lessons/                     # 已经整理成熟、可独立阅读的系统教程
 ├─ notes/
 │  ├─ knowledge-map.md          # 后端知识之间的依赖和位置
@@ -38,7 +66,9 @@ backend-learning-lab/
 ├─ contracts/                   # HTTP / 事件的机器可执行契约
 ├─ projects/reliable-support-agent/
 │                              # 把基础逐阶段整合起来的综合项目
-├─ progress/                    # 能力证据和 Debug 记录
+├─ progress/
+│  ├─ current-focus.md          # 当前教学接棒点
+│  └─ ...                       # 能力证据和 Debug 记录
 ├─ scripts/                     # 仓库校验工具
 └─ HOW_TO_ASK_GPT.md            # 对话学习、送审和知识沉淀的用法
 ```
@@ -47,7 +77,7 @@ backend-learning-lab/
 
 如果你只是想继续正常学习，不需要从第 0 课顺序读到第 16 课。
 
-先问自己“我现在卡在哪一层”：
+先看 [`progress/current-focus.md`](progress/current-focus.md)，再问自己“我现在卡在哪一层”：
 
 | 当前问题 | 去哪里 |
 | --- | --- |
@@ -67,7 +97,7 @@ backend-learning-lab/
 | RAG/Agent 怎么成为可靠后端服务 | `lessons/15-rag-agent-production.md` |
 | 系统设计到底怎么推出来 | `lessons/16-system-design.md` |
 
-完整依赖关系见 [学习路线](LEARNING_ROADMAP.md) 和 [知识地图](notes/knowledge-map.md)。
+完整依赖关系见 [学习路线](LEARNING_ROADMAP.md)、[成长路径](GROWTH_PATH.md) 和 [知识地图](notes/knowledge-map.md)。
 
 ## 对话学到的知识怎么沉淀
 
@@ -95,6 +125,26 @@ Session 是服务端会话状态
 - 只有亲手跑过才能理解 → `exercises/`
 
 详见 [learning journal 规则](notes/learning-journal/README.md)。
+
+### 约定触发词
+
+对话中直接说：
+
+```text
+更新仓库
+```
+
+表示：
+
+```text
+检查最近真正新增的长期知识
+→ 先读已有内容避免重复
+→ 更新最合适的 lesson/journal/exercise/profile/current-focus
+→ 推送远端
+→ 验证 branch / compare / CI
+```
+
+不是把聊天全文保存。
 
 ## 学习时真正要追求的能力
 
@@ -251,8 +301,10 @@ powershell -File scripts/check.ps1
 - 私有 Prompt / Secret；
 - 任何无法公开的数据。
 
+`LEARNER_PROFILE.md` 也只保存适合公开的**技术学习上下文**，不保存私人身份、工作机密或生活信息。
+
 只使用虚构业务和本地生成数据。
 
 ---
 
-这个仓库的目标不是让目录越来越大，而是让你几个月后换一台电脑回来，仍然能快速恢复：**当时真正理解了什么，以及为什么。**
+这个仓库的目标不是让目录越来越大，而是让你几个月后换一台电脑，或打开一个新的 AI 对话，仍然能快速恢复：**现在真正理解了什么、下一步该从哪里继续，以及最终要成长成怎样的后端工程师。**

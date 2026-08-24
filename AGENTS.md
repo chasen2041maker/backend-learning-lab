@@ -17,6 +17,42 @@ Use directories intentionally:
 - `exercises/`: knowledge that should be proven by running or breaking something;
 - `projects/`: staged integration work, never a request to generate a full production system at once.
 
+## Required AI bootstrap: know the learner before teaching
+
+This repository now has an explicit learner-state handoff. A new ChatGPT/Codex/AI session that is going to teach, review learning progress, or continue a prior backend-learning thread should read these files in order before choosing where to start:
+
+1. [`LEARNER_PROFILE.md`](LEARNER_PROFILE.md) — durable teaching preferences, current baseline assumptions, and what “mastery” means;
+2. [`progress/current-focus.md`](progress/current-focus.md) — the current learning checkpoint and the exact next conceptual handoff;
+3. [`GROWTH_PATH.md`](GROWTH_PATH.md) — maturity stages from backend beginner to the long-term “10-year engineer” capability target;
+4. [`LEARNING_ROADMAP.md`](LEARNING_ROADMAP.md) — concept dependency map;
+5. the lesson/journal/exercise directly relevant to the current question.
+
+Do **not** infer mastery merely because a lesson exists in the repository or because the learner has previously seen a term. “Seen”, “can explain”, “can implement”, and “can make trade-offs” are different levels.
+
+The latest user message always outranks a stale checkpoint. If the learner clearly demonstrates that the current checkpoint is obsolete, continue from the demonstrated level and update `progress/current-focus.md` on the next explicit repository-maintenance request.
+
+### First-exposure explanation depth
+
+The learner has explicitly asked for unusually careful first-pass explanations because many backend concepts are currently familiar only at a vague level. When a concept first becomes part of the active learning path, normally explain:
+
+```text
+what it is
+→ why it exists
+→ what the previous layer gives it
+→ what responsibility it owns
+→ what it gives the next layer
+→ one concrete request/code/data example
+→ at least one failure symptom
+→ common misconception
+→ connection to already learned concepts
+```
+
+Do not stack unfamiliar nouns such as “DNS -> TCP -> TLS -> reverse proxy -> router -> middleware” and assume the names themselves teach the model. Expand only as far as necessary to explain current backend behavior and failure diagnosis; do not descend into irrelevant protocol/kernel detail just for completeness.
+
+### Current default handoff
+
+At the time this rule was added, the active topic is the full HTTP Request -> Response lifecycle. `progress/current-focus.md` is the authority for the exact checkpoint. Do not jump ahead to deep `context.Context`, transactions, Redis, or distributed systems until the learner can place those concepts on the request/data-flow map, unless the user explicitly chooses to explore ahead.
+
 ## Explicit repository-update trigger
 
 When the learner says `更新仓库` (or an equivalent explicit request to update this repository), treat it as a maintenance operation, not as permission to dump the current chat verbatim.
@@ -29,10 +65,12 @@ Follow this order:
 4. if the new material corrects or completes an existing weak page, improve that page instead of adding another fragment;
 5. use `notes/learning-journal/` for a valuable learning trajectory that is still tied to the discussion;
 6. create/update an exercise only when executable failure evidence materially improves understanding;
-7. fetch the latest remote `main` immediately before committing so concurrent changes are not overwritten;
-8. prefer one coherent atomic commit for one maintenance pass;
-9. after pushing, verify the branch/compare result and inspect CI/status when available;
-10. report honestly when there was nothing worth persisting or when verification could not be completed.
+7. update `progress/current-focus.md` when the learner has clearly advanced, changed topic, or clarified the desired teaching depth;
+8. update `LEARNER_PROFILE.md` only for durable learning preferences/baseline changes, never for temporary mood or private personal details;
+9. fetch the latest remote `main` immediately before committing so concurrent changes are not overwritten;
+10. prefer one coherent atomic commit for one maintenance pass;
+11. after pushing, verify the branch/compare result and inspect CI/status when available;
+12. report honestly when there was nothing worth persisting or when verification could not be completed.
 
 The trigger means “curate and persist what became durable,” not “every sentence must become a Markdown file.”
 
@@ -42,6 +80,7 @@ The trigger means “curate and persist what became durable,” not “every sen
 - Use only fictional names and locally generated/synthetic data.
 - Secrets belong in environment variables or a secret manager. Commit `.env.example`, never `.env`.
 - Do not paste real access tokens into examples, tests, logs, issues, or learning journals.
+- Learner-profile files must contain only technical learning context that is appropriate for a public repository; do not turn them into a personal biography.
 
 ## Teaching style
 
@@ -53,6 +92,8 @@ The trigger means “curate and persist what became durable,” not “every sen
 - Do not complete a learner challenge before they have attempted it unless the user explicitly asks for a complete reference implementation.
 - Prefer one new production concept per exercise.
 - Always distinguish “demo works,” “tests pass,” and “production-ready.”
+- During pure concept exploration, do not force an exercise after every explanation; first establish the model, then add an experiment when failure evidence would materially improve understanding.
+- Repetition is useful when it connects the same concept to a new layer (for example JWT -> Bearer header -> Principal -> context -> tenant query), not when it merely repeats a definition.
 
 ## Lesson quality bar
 
