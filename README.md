@@ -2,6 +2,8 @@
 
 这是一个面向后端初学者的可运行学习仓库。它不是“后端名词大全”，而是一条从 HTTP 请求开始，逐步走到数据库、Redis、异步事件、可靠性、容器和 AI 服务生产化的实践路线。
 
+这个仓库同时承担**长期知识沉淀**的角色：平时可以通过对话、代码审查和真实问题学习；真正讲通、值得以后复习的内容再整理进 `lessons/`、`notes/` 和 `notes/learning-journal/`，而不是把聊天原文全部堆进仓库。
+
 Python 主线、Go 延后 1～2 个阶段复现：
 
 - Python 用 FastAPI 练习 AI/Agent 服务常见的 API、异步任务和测试；
@@ -14,10 +16,11 @@ Python 主线、Go 延后 1～2 个阶段复现：
 
 1. 阅读 [学习方式与第一天](lessons/00-start-here.md)。
 2. 按 [Windows 环境准备](lessons/00b-environment-setup.md) 检查 Python、Go、Git 和 Docker。
-3. 打开 [学习路线](LEARNING_ROADMAP.md)，每次只学习当前一周。
+3. 打开 [学习路线](LEARNING_ROADMAP.md)，把它当作知识顺序和能力地图，不必机械追赶周数。
 4. 从[第 1 课](lessons/01-request-lifecycle.md)启动 Python 服务，每学一小节就完成对应实验；Go 到第 8 周再开始。
 5. 完成练习后，在 [学习进度表](progress/README.md) 写下“我能独立解释什么”。
-6. 遇到问题或需要送审时，使用 [GPT 提问与整仓送审指南](HOW_TO_ASK_GPT.md)。
+6. 日常讨论中真正讲通的新知识，整理到 [对话学习日志](notes/learning-journal/README.md)，成熟后再并入正式课程或速查页。
+7. 遇到问题或需要送审时，使用 [GPT 提问与整仓送审指南](HOW_TO_ASK_GPT.md)。
 
 ## 仓库结构
 
@@ -29,16 +32,32 @@ backend-learning-lab/
 │  ├─ go-ticket-api/            # Go net/http 分层 API 与 go test
 │  ├─ sql-postgres/             # 表、索引、事务和查询练习
 │  ├─ redis-lab/                # 缓存、幂等和 Streams 小实验
-│  ├─ reliability-labs/          # 并发/鉴权/Webhook/Outbox/指标/RAG 微实验
+│  ├─ reliability-labs/         # 并发/鉴权/Webhook/Outbox/指标/RAG 微实验
 │  └─ infrastructure/           # 本地 PostgreSQL + Redis
 ├─ contracts/                   # HTTP 与事件契约
 ├─ projects/reliable-support-agent/
 │                                # 综合项目要求、里程碑和验收
-├─ notes/                       # 术语和知识地图
+├─ notes/
+│  ├─ knowledge-map.md          # 后端知识地图
+│  ├─ glossary.md               # 术语表
+│  ├─ *-cheatsheet.md           # 高频专题速查
+│  └─ learning-journal/         # 对话/审查中讲通的长期学习记录
 ├─ progress/                    # 打卡与 Debug 记录
 ├─ .github/workflows/ci.yml     # 公开仓库的最小 CI
 └─ HOW_TO_ASK_GPT.md            # 提问、讲解和代码审查模板
 ```
+
+## 知识应该放到哪里
+
+为了避免仓库越维护越像聊天记录，新增内容按下面规则归档：
+
+- `lessons/`：已经形成完整因果链、适合系统学习的成熟知识；
+- `notes/learning-journal/`：某次讨论、调试或代码审查中真正讲通的关键点、误区和失败场景；
+- `notes/*-cheatsheet.md`：隔几周回来时需要快速恢复记忆的专题；
+- `notes/glossary.md`：需要一两句话快速定位含义的术语；
+- `exercises/`：仅靠阅读不够、必须亲手制造失败和验证不变量的知识。
+
+同一知识可以从 learning journal 开始，之后逐步提炼到 lesson、cheatsheet 或 exercise；不要为了“记录”而复制整段聊天。
 
 ## 学完应该能做到什么
 

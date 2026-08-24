@@ -25,3 +25,26 @@
 - **Trace ID**：跨服务调用链的关联标识。
 - **Transactional Outbox**：用本地数据库事务解决业务写入和消息发布双写。
 - **TTL**：Key/数据的过期时间。
+
+## 认证与安全
+
+- **Authentication**：认证，回答“你是谁”，成功后应产生服务端可信 Principal。
+- **Authorization**：授权，回答“你能做什么”，通常检查 role、permission、owner、tenant 等。
+- **Principal**：认证成功后由服务端建立的可信主体信息，不应由客户端 Body 自报。
+- **Cookie**：浏览器按 Domain、Path、Secure、SameSite 等规则保存和自动携带少量 HTTP 数据的机制。
+- **Session**：服务端维护的一份会话状态；客户端通常只持有 Session ID。
+- **Session ID**：用于查找服务端 Session 的不透明标识。
+- **Token**：认证或授权凭证的统称。
+- **Bearer Token**：持有者凭证；拿到有效 Token 的一方通常即可使用，因此必须防止泄露与重放。
+- **Opaque Token**：客户端无法从 Token 本身读出语义，服务端通常需要查状态才能解析身份/权限。
+- **JWT**：JSON Web Token，一种 Token 格式；常见签名 JWT 的 Payload 可读，签名主要防篡改而非保密。
+- **Claim**：JWT 等 Token 中关于主体、签发方、过期时间等声明。
+- **Access Token**：调用 API 的短期凭证。
+- **Refresh Token**：用于换取新 Access Token 的长期高价值凭证，通常应支持服务端撤销。
+- **Refresh Token Rotation**：每次刷新都发新 Refresh Token，并使旧 Token 失效，以便发现重放。
+- **RBAC**：Role-Based Access Control，基于角色授权。
+- **ABAC**：Attribute-Based Access Control，基于用户、资源、环境等属性组合授权。
+- **XSS**：恶意脚本进入受信任页面执行。
+- **CSRF**：利用浏览器自动携带认证凭据，诱导用户发送攻击者希望的请求。
+- **CORS**：浏览器跨源访问策略，不是 Authentication 或 Authorization。
+- **Password Hashing**：使用 Argon2id、bcrypt、scrypt 等专用算法不可逆地验证密码，而不是保存明文或可逆密文。
