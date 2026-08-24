@@ -244,6 +244,28 @@ OAuth Authorization Code + PKCE
 把今天讲通的内容整理一下
 ```
 
+或者使用约定的短触发词：
+
+```text
+更新仓库
+```
+
+`更新仓库` 的含义不是“把最近聊天全部保存”，而是：
+
+```text
+审当前对话
+↓
+找真正新增且长期有价值的知识
+↓
+先检查仓库是否已经覆盖
+↓
+决定更新 lesson / journal / cheatsheet / exercise
+↓
+没有新增价值时允许不制造空提交
+↓
+提交后验证远端 branch / compare / CI
+```
+
 维护时应该先检查仓库已有内容：
 
 ```text

@@ -17,6 +17,25 @@ Use directories intentionally:
 - `exercises/`: knowledge that should be proven by running or breaking something;
 - `projects/`: staged integration work, never a request to generate a full production system at once.
 
+## Explicit repository-update trigger
+
+When the learner says `更新仓库` (or an equivalent explicit request to update this repository), treat it as a maintenance operation, not as permission to dump the current chat verbatim.
+
+Follow this order:
+
+1. inspect the current conversation for genuinely new, durable knowledge;
+2. read the relevant existing repository files before writing;
+3. if the knowledge is already covered well, do not create duplicate notes just to make a commit;
+4. if the new material corrects or completes an existing weak page, improve that page instead of adding another fragment;
+5. use `notes/learning-journal/` for a valuable learning trajectory that is still tied to the discussion;
+6. create/update an exercise only when executable failure evidence materially improves understanding;
+7. fetch the latest remote `main` immediately before committing so concurrent changes are not overwritten;
+8. prefer one coherent atomic commit for one maintenance pass;
+9. after pushing, verify the branch/compare result and inspect CI/status when available;
+10. report honestly when there was nothing worth persisting or when verification could not be completed.
+
+The trigger means “curate and persist what became durable,” not “every sentence must become a Markdown file.”
+
 ## Safety
 
 - Never copy employer source code, credentials, internal URLs, customer data, screenshots, logs, private prompts, or proprietary architecture into this public repository.
