@@ -62,7 +62,8 @@ Cookie / Session / Token / Bearer / JWT / Access Token / Refresh Token 的快速
 当前已有：
 
 - [`2026-08-24-auth-jwt-session.md`](learning-journal/2026-08-24-auth-jwt-session.md)：登录、Session、Token、JWT 与后端信任边界；
-- [`2026-08-24-github-app-write-scope.md`](learning-journal/2026-08-24-github-app-write-scope.md)：GitHub App/集成的写权限为什么和用户仓库权限不是一回事。
+- [`2026-08-24-github-app-write-scope.md`](learning-journal/2026-08-24-github-app-write-scope.md)：GitHub App/集成的写权限为什么和用户仓库权限不是一回事；
+- [`2026-08-26-http-network-go-handler.md`](learning-journal/2026-08-26-http-network-go-handler.md)：从 HTTP Request、404/405、认证授权，一路连接 DNS、TCP/TLS、Nginx、Socket、Go `net/http`、`http.Handler` 与 `HandlerFunc`。
 
 完整记录规则见 [`learning-journal/README.md`](learning-journal/README.md)。
 

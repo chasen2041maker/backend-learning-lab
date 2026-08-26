@@ -1,12 +1,12 @@
 # 当前学习接棒点
 
-最后更新：2026-08-24
+最后更新：2026-08-26
 
 这份文件回答：
 
 > **如果一个新的 ChatGPT / Codex 会话现在接手教学，应该从哪里继续，而不是从头重讲整个仓库？**
 
-它是动态文件。每次出现明显学习进展、方向变化或用户明确说“更新仓库”时，可以更新这里。
+它是动态文件。出现明显学习进展、方向变化，或用户明确说“更新仓库/沉淀仓库”时，应更新这里。
 
 ---
 
@@ -22,7 +22,7 @@ GROWTH_PATH S0 后端新手
 
 注意：这是当前学习切入点，不是能力标签或职位评价。
 
-很多技术已经“见过”，但不能默认达到独立实现水平。
+很多技术已经“见过”，但不能因此默认达到独立实现水平。
 
 ---
 
@@ -30,21 +30,24 @@ GROWTH_PATH S0 后端新手
 
 ## HTTP Request -> Response 完整生命周期
 
-当前正在建立这一张真正可用的后端心智图：
+当前正在建立这张可用于写代码、读代码和排错的后端心智图：
 
 ```text
 Client
-→ DNS
+→ Domain / DNS
 → IP + Port
-→ TCP / TLS
-→ OS / listening socket
+→ listening socket
+→ TCP connection
+→ TLS（HTTPS）
+→ OS network stack / socket
 → Go process
 → net/http
 → *http.Request
-→ Router
+→ ServeMux / Router
 → Middleware
 → Authentication
 → Principal
+→ Authorization
 → Handler
 → Service
 → Repository
@@ -53,69 +56,104 @@ Client
 → Client
 ```
 
-学习者已经看到过简化版本：
+2026-08-26 对话中的高密度整理见：
 
-```text
-Client
-→ Network
-→ HTTP Server
-→ Router
-→ Middleware
-→ Authentication
-→ Authorization
-→ Handler
-→ Service
-→ Repository
-→ Database
-```
-
-并明确反馈：
-
-> 很多后端概念目前只有模糊印象，希望每个第一次出现的概念都讲得更细，通过不断连接小细节加深印象。
-
-因此新的教学会话**不要直接跳到 `context.Context`、数据库事务或框架**，先把这条请求生命周期讲扎实。
+- [`../notes/learning-journal/2026-08-26-http-network-go-handler.md`](../notes/learning-journal/2026-08-26-http-network-go-handler.md)
 
 ---
 
-# 当前讲解应从哪里继续
+# 已通过本轮对话复述的部分
 
-优先继续/复核下面这些概念，按数据流顺序讲。
+以下内容已经能在提示很少的情况下给出正确方向，但仍然只代表“心智模型初步建立”，不代表已经独立编码熟练。
 
-## A. 一条 HTTP Request 本身
+## 1. Request line / Header
 
-确保能真正读懂：
-
-```http
-GET /api/v1/orders/123 HTTP/1.1
-Host: api.example.com
-Authorization: Bearer eyJ...
-Accept: application/json
-```
-
-需要能解释：
-
-- `GET` = Method；
-- `/api/v1/orders/123` = Path；
-- `123` 可能是 Path Parameter；
-- `HTTP/1.1` 是协议版本；
-- `Host` 是什么；
-- Header 是什么；
-- `Authorization: Bearer ...` 如何连接到 Token/JWT；
-- `Accept` vs `Content-Type`；
-- GET 常见为什么没有 Body。
-
-不要假设这些都已经完全掌握；可以通过用户复述判断。
-
-## B. Client 与 Network
-
-继续建立：
+已经能区分：
 
 ```text
-Browser / curl / App / another service
-= HTTP Client
+Method
+Path
+Route Pattern
+Path Parameter
+HTTP version
+Host
+Authorization Header
+Accept
+Content-Type
 ```
 
-然后解释：
+关键关系：
+
+```text
+Content-Type
+= 当前 Body 是什么格式
+
+Accept
+= Client 希望收到什么格式
+```
+
+以及：
+
+```text
+Authorization Header
+= 携带 Credential
+≠ Authorization 已经通过
+```
+
+## 2. Router 与 404 / 405
+
+已经纠正并能复述：
+
+```text
+Method + Route Pattern
+→ 选择 Handler
+
+Path Parameter
+→ 决定这个 Handler 处理哪个具体资源
+```
+
+```text
+Path 匹配不到
+→ 404
+
+Path 能匹配，但 Method 不支持
+→ 405
+```
+
+## 3. Authentication / Authorization
+
+已经能区分：
+
+```text
+Authentication
+= 你是谁？
+
+Authorization
+= 你能做什么？
+```
+
+并理解：
+
+```text
+Credential
+→ Authentication
+→ Principal
+→ Authorization
+```
+
+`401` 与 `403` 的分层关系已经建立，但后续仍需要在真实代码中反复连接。
+
+## 4. Client / DNS / IP / Port / listen
+
+已经理解：
+
+```text
+Client
+= 主动发请求的一方
+≠ 前端页面的同义词
+```
+
+以及：
 
 ```text
 Domain
@@ -125,149 +163,177 @@ Domain
 → connection
 ```
 
-需要特别建立：
+能够用自己的话解释 `listen`：进程通过操作系统在某个 `IP:Port` 等待外部连接。
 
-- Client 不等于前端页面；
-- 攻击者不需要使用前端，可以直接调用 API；
-- IP 与 Port 分别解决什么；
-- `127.0.0.1` 是 loopback；
-- `connection refused` 意味着请求通常还没到 HTTP Handler。
+## 5. TCP 与 HTTP
 
-## C. TCP / TLS / HTTP 的层级
-
-只需要展开到后端排错所需深度：
+已经明确：
 
 ```text
-HTTP 表达 Request / Response 语义
-TCP 常见情况下提供可靠有序字节流
-TLS 为 HTTPS 提供加密/完整性/服务器身份认证
+TCP Connection
+≠ HTTP Request
 ```
 
-暂时不需要深入 TCP 拥塞控制、TLS 密码套件或内核网络实现。
+当前心智模型：
 
-## D. HTTP Server 与 Go `net/http`
+```text
+TCP
+= 为应用提供可靠、有序的字节流
 
-需要真正理解：
+HTTP
+= 定义 Request / Response 的格式和语义
+```
+
+不需要现在深入拥塞控制、sequence number 等底层算法。
+
+## 6. TLS / HTTPS / Nginx
+
+已经讲过并建立初步连接：
+
+```text
+HTTP
+↓
+TLS
+↓
+TCP
+```
+
+TLS 主要解决：机密性、完整性、服务器身份验证。
+
+已经知道：
+
+```text
+JWT Signature
+≠ 网络传输加密
+```
+
+因此 JWT 仍需要 HTTPS。
+
+Nginx 当前只需掌握：
+
+```text
+Reverse Proxy
+TLS termination
+Load Balancing
+```
+
+以及：
+
+```text
+Nginx ≠ API Gateway 这个架构概念本身
+```
+
+## 7. OS / Socket / Process / Go `net/http`
+
+已经建立：
+
+```text
+Network
+→ OS network stack
+→ Socket
+→ Go Process
+→ net/http
+```
+
+能区分：
+
+```text
+Port
+= 编号
+
+Socket
+= OS 管理、程序用于网络通信的对象/端点
+```
+
+并理解：
 
 ```go
 http.ListenAndServe(":8080", handler)
 ```
 
-不是“直接运行 Handler”，而是概念上包含：
+概念上不是“直接执行 Handler”，而是封装了监听、接受连接、读取/解析 HTTP、构造 `*http.Request`、调度 Handler、写回 Response 等过程。
 
-```text
-listen
-→ accept connections
-→ read HTTP bytes
-→ parse request
-→ build *http.Request
-→ dispatch to handler chain
-```
+## 8. `http.Handler` / `HandlerFunc`
 
-重点理解：
+这是当前最新通过复述的点。
+
+核心接口：
 
 ```go
-func handler(w http.ResponseWriter, r *http.Request)
+type Handler interface {
+    ServeHTTP(ResponseWriter, *Request)
+}
 ```
 
-其中：
+已经能用自己的话说出：
 
-```text
-r = 这次 HTTP Request 在 Go 中的表示
-w = 构造 HTTP Response 的接口
-```
+> `HandlerFunc` 有 `ServeHTTP`，因此满足 `http.Handler`；它把普通 `func(w, r)` 对接/适配到 Go HTTP Handler 体系。
 
-## E. Router
+需要继续通过真实 Go 代码巩固 `ServeMux -> Handler -> ServeHTTP` 调用链。
 
-需要能回答：
+---
 
-```text
-Router 收到什么？
-主要根据什么匹配？
-它最终交给谁？
-404 / 405 分别代表什么？
-```
+# 当前精确接棒点
 
-核心：
+**不要重新从 DNS、TCP、JWT 开始长篇复习。**
 
-```text
-Method + Path
-→ Handler
-```
+除非复述明显退化，否则下一步直接进入：
 
-## F. Middleware
+# Middleware
 
-不要只记“中间件”。
-
-需要理解：
+重点真正讲清：
 
 ```text
 Request
-→ Request ID Middleware
-→ Logging Middleware
-→ Authentication Middleware
-→ Handler
-```
-
-并理解 wrapper / onion 模型，以及为什么横切逻辑不应该复制到每个 Handler。
-
-## G. Authentication -> Principal
-
-把之前已经讨论过的认证知识放回请求链：
-
-```text
-Authorization: Bearer token
+↓
+Request ID Middleware
+↓
+Logging Middleware
 ↓
 Authentication Middleware
 ↓
-validate credential
-↓
-Principal(subject, tenant, permissions)
+Handler
 ```
 
-重点再次区分：
+不能只说“中间件就是在中间执行”。需要解释：
 
-```text
-客户端 body 说 user_id=42
-≠
-服务端验证凭证后得到 Principal.user_id=42
-```
+1. Middleware 输入通常也是一个 `http.Handler`；
+2. Middleware 返回一个新的 `http.Handler`；
+3. wrapper / onion 模型为什么成立；
+4. `next.ServeHTTP(w, r)` 到底表示什么；
+5. 为什么可以在 `next` 前做认证，在 `next` 后统计耗时；
+6. 为什么 Request ID、Logging、Authentication 等横切逻辑不应该复制到每个业务 Handler；
+7. Middleware 与 Router、Handler 的真实组合顺序如何变化。
 
-## H. Authorization
+建议用最小 Go 例子，但仍然先讲调用链和数据流，再讲语法。
 
-需要纠正一个过度简化：
+---
 
-```text
-Authentication
-→ Authorization Middleware
-→ Handler
-```
+# Middleware 之后的顺序
 
-只是教学图。
-
-真实系统中，资源级授权可能必须等拿到资源后才能判断，所以授权可能分布在：
-
-- middleware；
-- service；
-- repository query scope；
-- owner/tenant boundary。
-
-## I. Handler -> Service -> Repository -> Database
-
-最终要建立：
+Middleware 讲通后继续：
 
 ```text
 Handler
-HTTP adapter
+→ Service
+→ Repository
+→ Database
+```
+
+必须能用自己的话解释：
+
+```text
+Handler
+= HTTP adapter
 
 Service
-business use case
+= business use case / business rules
 
 Repository
-persistence boundary
+= persistence boundary
 
 Database
-business facts
+= business facts / source of truth
 ```
 
 特别强调：
@@ -276,7 +342,7 @@ business facts
 Repository != 只是“放 SQL 的文件夹”
 ```
 
-以及多租户查询为什么应尽量做到：
+以及资源/tenant 范围为什么应该进入持久化边界，例如：
 
 ```sql
 WHERE id = $1
@@ -285,127 +351,48 @@ WHERE id = $1
 
 ---
 
-# 已经讨论过，但暂时不要当成完全掌握的知识
+# 进入 `context.Context` 前的验收
 
-## Authentication / JWT 系列
+不要因为已经“讲过”就直接进入 `context.Context`。
 
-已经系统讨论过：
-
-```text
-Cookie
-Session
-Session ID
-Token
-Bearer
-Opaque Token
-JWT
-JWT_SECRET
-Claims
-Access Token
-Refresh Token
-Refresh Rotation
-Authentication
-Authorization
-Principal
-RBAC / owner / tenant
-401 / 403 / hidden 404
-XSS / CSRF / CORS
-```
-
-对应：
-
-- [`lessons/10-auth-security.md`](../lessons/10-auth-security.md)
-- [`notes/authentication-cheatsheet.md`](../notes/authentication-cheatsheet.md)
-- [`notes/learning-journal/2026-08-24-auth-jwt-session.md`](../notes/learning-journal/2026-08-24-auth-jwt-session.md)
-
-状态建议：**概念已经建立初步网络，但需要在真实 HTTP 请求链和后续代码中反复连接，才能稳固。**
-
-## Go
-
-已经接触过基础语法、interface、goroutine、channel、JSON、`net/http` 等，但不要因此直接按熟练 Go 后端工程师讲课。
-
-遇到 Go 代码时：
-
-```text
-先讲调用链 / 数据流
-再讲关键语法
-```
-
-不要只逐行翻译。
-
----
-
-# 当前最近的下一里程碑
-
-在进入 `context.Context` 深入学习前，应该先能不看答案完成以下复述。
-
-## 1. 读懂请求
-
-看到：
-
-```http
-GET /api/v1/orders/123 HTTP/1.1
-Host: api.example.com
-Authorization: Bearer xxx
-Accept: application/json
-```
-
-能逐项解释。
-
-## 2. 画请求链
-
-至少能自己画：
+先做一次关闭文档复述，至少能完整说明：
 
 ```text
 Client
-→ Network
-→ HTTP Server
+→ DNS
+→ IP + Port
+→ TCP / TLS
+→ OS / Socket
+→ Go net/http
+→ Request
 → Router
 → Middleware
+→ Authentication / Principal / Authorization
 → Handler
 → Service
 → Repository
-→ Database
+→ DB
+→ Response
 ```
 
-并能把它展开一层。
-
-## 3. 错误定位
-
-能区分：
+并能回答：
 
 ```text
-DNS failure
-connection refused
-TLS error
-404
-405
-400/422
-401
-403
-409
-500/503
+为什么 connection refused 不是 404？
+为什么 TLS error 还没到 Handler？
+为什么 Path 对、Method 错是 405？
+为什么 Authorization Header 不等于授权成功？
+为什么 TCP Connection 不等于 HTTP Request？
+为什么 HandlerFunc 能当 Handler？
+Middleware 为什么适合横切逻辑？
+Handler 为什么不应该直接塞满 SQL？
 ```
 
-不要求背所有状态码，而要知道这些错误大概说明请求走到了哪里。
-
-## 4. 分层职责
-
-能用自己的话回答：
-
-```text
-Router 为什么存在？
-Middleware 为什么存在？
-Handler 为什么不应该塞满 SQL？
-Service 负责什么？
-Repository 为什么不是简单的 SQL 文件夹？
-```
-
-达到这里以后，下一自然主题是：
+达到这里以后，下一自然主题才是：
 
 # `context.Context`
 
-因为此时可以把它放到已有请求链中：
+此时再连接：
 
 ```text
 HTTP Request
@@ -421,7 +408,7 @@ Repository
 DB / downstream
 ```
 
-然后再连接 goroutine、timeout、cancel、client disconnect、DB query cancellation。
+然后再连接 goroutine、timeout、client disconnect、DB query cancellation。
 
 ---
 
@@ -430,15 +417,14 @@ DB / downstream
 新的 GPT 接手时：
 
 1. 先读 [`../LEARNER_PROFILE.md`](../LEARNER_PROFILE.md)；
-2. 不要从整个后端史重新讲起；
-3. 从本文件当前 checkpoint 继续；
-4. 如果用户已经能准确复述某一段，就快速通过，不机械重复；
-5. 如果用户说“这个我还是模糊”，立即降速展开，不要继续堆新术语；
-6. 每个新概念第一次出现时，说明：定义、为什么、输入、职责、输出、失败、与前后概念关系；
-7. 最新用户消息永远优先于本文件；如果明显进步，下一次“更新仓库”时更新 checkpoint。
-
----
+2. 再读本文件和本轮 learning journal；
+3. 不要从整个后端史重新讲起；
+4. 从 Middleware 这个 checkpoint 继续；
+5. 用户能准确复述的部分快速通过，不机械重复；
+6. 用户说模糊时立即降速，解释定义、为什么、输入、职责、输出、失败、前后关系；
+7. Go 代码仍然坚持“先调用链 / 数据流，再关键语法”；
+8. 最新用户消息永远优先于本文件。
 
 当前一句话接棒说明：
 
-> **继续把一次真实 HTTP 请求从浏览器一路讲到 Go `net/http`、Router、Middleware、Handler、Service、Repository、Database；讲细，不要假设名词已经掌握；等这条链能独立复述后，再深入 `context.Context`。**
+> **HTTP 请求从 Client、DNS、TCP/TLS、OS/Socket 到 Go `net/http`、`*http.Request`、Router、`http.Handler` / `HandlerFunc` 已经建立第一轮心智模型；下一步直接把 Go Middleware 的 wrapper/onion 调用链讲透，再进入 Handler -> Service -> Repository -> DB，完成整链复述后才进入 `context.Context`。**
