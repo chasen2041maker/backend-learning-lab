@@ -1,134 +1,257 @@
-# 后端工程学习知识库
+# Go 后端工程学习仓库
 
-这是一个用于**长期学习后端工程**的公开仓库。它不是固定课表，也不是“把所有后端名词塞进来”的百科全书。
+这是一个用于长期学习 **Go 后端工程** 的公开仓库。
 
-主要学习方式是：
-
-```text
-和 AI / 代码 / 真实问题对话
-        ↓
-把一个概念真正讲通
-        ↓
-亲手运行、制造失败、验证边界
-        ↓
-把值得长期保留的知识整理进仓库
-```
-
-因此，这个仓库既是教程，也是跨电脑可访问的个人后端知识库和实验室。
-
-## 新 AI / 新电脑：先从这里接棒
-
-如果这是一个新的 ChatGPT / Codex / AI 会话，不要先从第 0 课重新讲，也不要看到高级文件就假设已经掌握。
-
-按顺序读取：
-
-1. **[`LEARNER_PROFILE.md`](LEARNER_PROFILE.md)**：这个学习者应该怎么教、哪些概念只是“见过”而不是掌握；
-2. **[`progress/current-focus.md`](progress/current-focus.md)**：当前真正学到哪一段、下一步应该从哪里继续；
-3. **[`GROWTH_PATH.md`](GROWTH_PATH.md)**：从后端新手到“10 年开发成熟度”的长期能力阶梯；
-4. **[`LEARNING_ROADMAP.md`](LEARNING_ROADMAP.md)**：各后端知识之间的依赖关系；
-5. 再进入当前主题对应的 lesson / journal / exercise。
-
-当前进度文件永远只是接棒辅助。**最新对话中用户实际表现出来的理解程度优先。**
-
-长期目标不是“十年后才算完成”，而是逐步获得成熟工程师常见的能力：
+主要学习方式不是独自按章节看书，也不是面对空白目录手搓所有样板代码，而是：
 
 ```text
-需求分析
-→ 最小正确设计
-→ 数据/身份/事务边界
-→ 并发/重复/失败推演
-→ 测试与观测证据
-→ 性能/可靠性/安全/成本权衡
-→ 系统演进和复杂度控制
+和 AI 对话把问题与调用链讲通
+↓
+查看完整、正确、可运行的 Go 参考实现
+↓
+只跟写当前必要代码
+↓
+运行测试 / curl / 故障实验
+↓
+独立完成一个小变化
+↓
+AI Review
+↓
+把高价值理解和进度沉淀回 GitHub
 ```
 
-## 最重要的使用原则
+目标是建立对后端和 AI 生成代码的控制力：
 
-1. **问题驱动，不按日历驱动。** `LEARNING_ROADMAP.md` 是知识依赖图，不是“20 周必须完成”的计划。
-2. **概念优先于框架。** 先搞懂 HTTP、身份、事务、并发、失败窗口，再决定 Gin/FastAPI/Redis/K8s 怎么用。
-3. **Go 和 Python 都是实现工具。** 当前重点学 Go 时，就用 Go 做主实现；Python 用于比较、Agent/RAG 和已有练习。不再规定“必须先 Python 后 Go”。
-4. **能运行不等于掌握。** 至少要能解释输入、状态变化、输出、失败点和为什么这样设计。
-5. **不为了架构图高级而加组件。** 能用单服务 + PostgreSQL 解决，就不要先拆微服务、加 Kafka、上 K8s。
+```text
+看得懂
+讲得清
+改得对
+测得出
+出错能定位
+知道什么时候不要增加复杂度
+```
 
-## 仓库里的内容分别干什么
+---
+
+# 日常学习入口
+
+按下面顺序使用：
+
+1. **[`progress/current-focus.md`](progress/current-focus.md)**：当前真正学到哪里、下一次从哪里继续；
+2. **[`GO_BACKEND_TRACK.md`](GO_BACKEND_TRACK.md)**：完整十二章 Go 后端主线；
+3. **[`exercises/go-ticket-api/`](exercises/go-ticket-api/)**：主参考项目；
+4. 当前章节对应的 walkthrough 和 practice。
+
+当前主项目的三个入口：
+
+- [`STUDY_ORDER.md`](exercises/go-ticket-api/STUDY_ORDER.md)：章节顺序与状态；
+- [`CODE_MAP.md`](exercises/go-ticket-api/CODE_MAP.md)：文件与调用链地图；
+- `walkthrough/`：带详细解释的参考代码；
+- `practice/`：只要求独立完成的小变化与故障实验。
+
+---
+
+# 新 AI / 新电脑怎么接棒
+
+新的 ChatGPT / Codex / AI 会话先读：
+
+```text
+1. LEARNER_PROFILE.md
+2. progress/current-focus.md
+3. GO_BACKEND_TRACK.md
+4. 当前 walkthrough / code
+```
+
+不需要每次都先读完整 `GROWTH_PATH.md` 和 `LEARNING_ROADMAP.md`；它们只在长期规划、阶段复盘或技术选型时使用。
+
+最新对话中的真实理解程度永远优先于可能陈旧的进度文件。
+
+---
+
+# 当前学习者定位
+
+公开、长期有效的技术上下文：
+
+```text
+已在 Agent 工程岗位工作约 4 个月
+日常使用 Codex / AI Coding 参与真实项目
+Python 和 Agent/RAG 应用经验相对更好
+Go 和传统后端基础仍然薄弱
+```
+
+因此本仓库不把学习者当作完全没有开发经验的新手，也不会强迫从空白开始重复大量样板代码。
+
+默认模式：
+
+```text
+完整参考实现
++ 对话讲解
++ 跟写必要部分
++ 独立小改
++ 测试和故障
+```
+
+详细规则见 [`LEARNER_PROFILE.md`](LEARNER_PROFILE.md)。
+
+---
+
+# 仓库范围
+
+本仓库主线负责：
+
+```text
+Go / net/http
+HTTP / API Contract
+Router / Middleware / Handler
+Service / Repository
+PostgreSQL / SQL
+Authentication / Authorization
+Transaction / Idempotency
+Concurrency / Timeout / Cancel
+Redis 的角色边界
+Async / Outbox / Worker
+Testing / Debugging / Observability
+Docker / CI / Deployment
+系统设计与复杂度控制
+```
+
+Agent / RAG / Prompt / Eval / Multi-Agent 有单独的学习仓库。本仓库只保留必要的后端连接，例如：
+
+```text
+Agent Task 仍需要持久状态
+Tool 仍需要 Authorization / Idempotency / Audit
+RAG 仍需要 tenant / ACL filtering
+模型调用仍需要 timeout / budget / observability
+```
+
+原有 Agent 综合材料保留为可选参考，不再是当前主线。
+
+---
+
+# 主参考项目
+
+## Go Ticket API
+
+路径：
+
+- [`exercises/go-ticket-api/`](exercises/go-ticket-api/)
+
+它是一套完整可运行的 Go `net/http` 模块化单体基线，包含：
+
+```text
+http.Server
+ServeMux / Router
+Middleware
+Authentication / Principal
+Handler
+Service
+Repository
+Memory storage
+context.Context
+mutex
+状态机 / 版本冲突
+稳定错误映射
+handler / service tests
+```
+
+运行：
+
+```powershell
+cd exercises\go-ticket-api
+go test ./...
+go run ./cmd/server
+```
+
+服务默认监听：
+
+```text
+http://127.0.0.1:8080
+```
+
+当前项目是**参考教材项目**，不是要求一次从空白重写的挑战。详细注释放在 walkthrough，运行代码保持清楚、可测试。
+
+---
+
+# 十二章主线概览
+
+```text
+01 HTTP Server / Handler
+02 Router / ServeMux
+03 Middleware
+04 Handler -> Service -> Repository
+05 Error / Config / Logging / Testing
+06 context.Context / Deadline / Cancel
+07 PostgreSQL
+08 Authentication / Authorization
+09 Transaction / Idempotency
+10 Concurrency / Redis
+11 Async / Outbox / Worker
+12 Observability / Docker / CI / Deployment
+```
+
+每章默认：
+
+```text
+对话讲解
+→ 完整参考
+→ 跟写必要代码
+→ 运行
+→ 独立小改
+→ 故障实验
+→ Review
+```
+
+完整目录见 [`GO_BACKEND_TRACK.md`](GO_BACKEND_TRACK.md)。
+
+---
+
+# 其他目录
 
 ```text
 backend-learning-lab/
-├─ LEARNER_PROFILE.md            # 长期教学画像：新 AI 先读
-├─ GROWTH_PATH.md                # 新手 -> 成熟高级工程师的能力阶梯
-├─ lessons/                     # 已经整理成熟、可独立阅读的系统教程
-├─ notes/
-│  ├─ knowledge-map.md          # 后端知识之间的依赖和位置
-│  ├─ glossary.md               # 快速查术语
-│  ├─ *-cheatsheet.md           # 隔几周回来快速恢复记忆
-│  └─ learning-journal/         # 对话/调试中真正讲通的知识记录
-├─ exercises/                   # 必须亲手运行、失败、修复才能掌握的实验
-├─ contracts/                   # HTTP / 事件的机器可执行契约
-├─ projects/reliable-support-agent/
-│                              # 把基础逐阶段整合起来的综合项目
+├─ GO_BACKEND_TRACK.md             # 当前唯一日常主线
+├─ LEARNER_PROFILE.md              # 长期教学契约
+├─ GROWTH_PATH.md                  # 长期能力成熟度地图
+├─ LEARNING_ROADMAP.md             # 知识依赖地图
+├─ lessons/                        # 通用、成熟的系统教程
+├─ notes/                          # 术语、速查、学习轨迹
+├─ exercises/
+│  └─ go-ticket-api/               # 当前主参考项目
+├─ contracts/                      # HTTP / Event 契约
+├─ projects/                       # 可选整合项目
 ├─ progress/
-│  ├─ current-focus.md          # 当前教学接棒点
-│  └─ ...                       # 能力证据和 Debug 记录
-├─ scripts/                     # 仓库校验工具
-└─ HOW_TO_ASK_GPT.md            # 对话学习、送审和知识沉淀的用法
+│  └─ current-focus.md             # 精确接棒点
+└─ scripts/                        # 自动校验
 ```
 
-## 应该从哪里看
+---
 
-如果你只是想继续正常学习，不需要从第 0 课顺序读到第 16 课。
-
-先看 [`progress/current-focus.md`](progress/current-focus.md)，再问自己“我现在卡在哪一层”：
-
-| 当前问题 | 去哪里 |
-| --- | --- |
-| HTTP 请求、端口、Handler、状态码 | `lessons/01-request-lifecycle.md` |
-| Handler / Service / Repository 为什么分层 | `lessons/02-*`、`03-*` |
-| API 输入、契约、可信 tenant | `lessons/04-api-contracts.md` |
-| SQL、表、约束、索引、连接 | `lessons/05-sql-postgresql.md` |
-| 事务、锁、重复请求、幂等 | `lessons/06-transactions-idempotency.md` |
-| Redis、缓存、TTL、锁 | `lessons/07-redis.md` |
-| goroutine、async、并发、timeout、context | `lessons/08-concurrency-timeouts.md` |
-| 消息、Outbox、Streams、ACK、Pending | `lessons/09-streams-outbox.md` |
-| Cookie、Session、JWT、权限、安全 | `lessons/10-auth-security.md` |
-| 测试、代码审查、Debug | `lessons/11-testing-debugging.md` |
-| 日志、指标、Trace、SLO | `lessons/12-observability.md` |
-| Docker、镜像、CI、K8s | `lessons/13-docker-k8s-ci.md` |
-| 网关、微服务、REST/gRPC/事件 | `lessons/14-grpc-events-boundaries.md` |
-| RAG/Agent 怎么成为可靠后端服务 | `lessons/15-rag-agent-production.md` |
-| 系统设计到底怎么推出来 | `lessons/16-system-design.md` |
-
-完整依赖关系见 [学习路线](LEARNING_ROADMAP.md)、[成长路径](GROWTH_PATH.md) 和 [知识地图](notes/knowledge-map.md)。
-
-## 对话学到的知识怎么沉淀
-
-不是把聊天记录整段复制进来。
-
-### 先进入 learning journal
-
-当一次对话真正纠正了一个理解，例如：
+# 如何判断掌握
 
 ```text
-JWT ≠ Bearer Token
-Bearer 说明凭证怎么使用
-JWT 说明 Token 可以长什么样
-Cookie 是浏览器机制
-Session 是服务端会话状态
+L1 见过：知道名词和用途
+L2 能解释：能画调用链、指出失败点
+L3 能控制：能修改、测试、排错
+L4 能权衡：知道什么时候不用、替代方案和成本
 ```
 
-这种“之前容易混淆、现在已经讲通”的知识，可以整理进 `notes/learning-journal/`。
+参考实现驱动并不降低标准。达到 L3 至少需要：
 
-### 再决定要不要升级
+```text
+读懂完整代码
++ 解释真实调用链
++ 独立完成一个变化
++ 写/改测试
++ 定位一个故障
+```
 
-- 能独立形成一整套教程 → `lessons/`
-- 只需要一分钟快速恢复 → `*-cheatsheet.md`
-- 只是一个术语 → `glossary.md`
-- 只有亲手跑过才能理解 → `exercises/`
+不要求脱离所有参考从空白默写整个工程。
 
-详见 [learning journal 规则](notes/learning-journal/README.md)。
+---
 
-### 约定触发词
+# 仓库更新约定
 
-对话中直接说：
+对话中说：
 
 ```text
 更新仓库
@@ -137,174 +260,31 @@ Session 是服务端会话状态
 表示：
 
 ```text
-检查最近真正新增的长期知识
-→ 先读已有内容避免重复
-→ 更新最合适的 lesson/journal/exercise/profile/current-focus
-→ 推送远端
+检查真正新增的长期知识或学习方式变化
+→ 读取已有内容避免重复
+→ 更新最合适的 track / profile / current-focus / walkthrough / journal
+→ 原子提交到远端
 → 验证 branch / compare / CI
 ```
 
-不是把聊天全文保存。
+不是保存聊天全文。
 
-## 学习时真正要追求的能力
+---
 
-不是“知道多少名词”，而是逐渐能做到：
-
-```text
-一个请求来了
-↓
-我知道它经过哪些层
-↓
-我知道哪些输入可信、哪些不可信
-↓
-我知道数据在哪里变化
-↓
-我知道事务能保护到哪里
-↓
-我知道并发/重试可能造成什么重复或覆盖
-↓
-我知道依赖挂掉以后系统怎么失败
-↓
-我知道用什么日志/测试/指标证明我的判断
-```
-
-最终你应该能够从一个需求推导设计，而不是从“我要不要用 Redis/Kafka/K8s”开始。
-
-## Go / Python / SQL / Redis 怎么分工
-
-### Go
-
-适合当前后端基础训练：
-
-- `net/http`；
-- middleware；
-- `context.Context`；
-- error handling；
-- goroutine/channel；
-- 并发安全；
-- 服务边界。
-
-基础阶段优先标准库，避免框架替你隐藏 HTTP 细节。
-
-### Python
-
-主要用于：
-
-- 已有 FastAPI 分层练习；
-- asyncio 对比；
-- RAG/Agent 服务；
-- 快速可靠性微实验。
-
-### PostgreSQL
-
-保存业务事实，学习：
-
-- schema；
-- constraint；
-- index；
-- transaction；
-- lock；
-- migration；
-- query plan。
-
-### Redis
-
-只在明确知道角色时使用：
-
-- cache；
-- session / 短期状态；
-- rate limit；
-- coordination；
-- Streams。
-
-不要把无法重建的核心业务事实只放 Redis。
-
-## 综合项目怎么用
-
-[可靠工单 + Agent 后端](projects/reliable-support-agent/README.md)不是要求一次完成的“大项目”。
-
-正确演进顺序是：
-
-```text
-单服务 + 内存
-↓
-单服务 + PostgreSQL
-↓
-事务 / 鉴权 / 幂等
-↓
-Redis / 并发（确有理由时）
-↓
-Outbox / Worker / Streams
-↓
-Agent / RAG
-↓
-最后才考虑 Gateway、拆服务、K8s
-```
-
-每加一个组件，都必须能回答：
-
-> 它解决了前一版的什么具体问题？不用它会发生什么？
-
-## 如何判断“我会了”
-
-用 [能力进度表](progress/README.md)，不要用“读完章节”判断。
-
-建议四级：
-
-```text
-L1 见过：知道名词
-L2 能解释：能画出数据流和失败点
-L3 能独立：能自己实现、测试、排错
-L4 能权衡：知道什么时候不用它，以及替代方案
-```
-
-仓库大多数基础知识至少追求 L2～L3。
-
-## 环境与快速验证
-
-Windows 环境见 [环境准备](lessons/00b-environment-setup.md)。
-
-Go：
-
-```powershell
-cd exercises\go-ticket-api
-go test ./...
-go run ./cmd/server
-```
-
-Python：
-
-```powershell
-cd exercises\python-ticket-api
-python -m pip install -r ..\..\requirements-repo.lock
-python -m pip install --no-deps -e .
-python -m pytest
-```
-
-整仓检查：
-
-```powershell
-powershell -File scripts/check.ps1
-```
-
-检查通过只说明当前自动化验证通过，不代表已经理解，也不代表达到生产级。
-
-## 公开仓库安全边界
+# 公开仓库安全边界
 
 永远不要提交：
 
-- 公司代码或架构；
-- 内部 URL；
-- 客户数据；
-- 真实日志；
-- 密码、Token、API Key；
-- 私有 Prompt / Secret；
-- 任何无法公开的数据。
-
-`LEARNER_PROFILE.md` 也只保存适合公开的**技术学习上下文**，不保存私人身份、工作机密或生活信息。
+- 公司源代码或内部架构；
+- 内部域名、IP、日志、Prompt；
+- 客户或用户数据；
+- 密码、Token、API Key、Secret；
+- 无法公开的业务材料。
 
 只使用虚构业务和本地生成数据。
 
 ---
 
-这个仓库的目标不是让目录越来越大，而是让你几个月后换一台电脑，或打开一个新的 AI 对话，仍然能快速恢复：**现在真正理解了什么、下一步该从哪里继续，以及最终要成长成怎样的后端工程师。**
+这个仓库最终要证明的不是“抄过多少代码”，而是：
+
+> **即使大量使用 Codex，仍然能够对一次请求、一个业务事实、一次事务、一个并发冲突和一个故障恢复承担工程责任。**
