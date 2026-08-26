@@ -1,138 +1,142 @@
-# Projects：把已经理解的知识放进同一个系统
+# Projects：只在需要整合时使用
 
-`projects/` 不是用来一次生成“大而全企业项目”的地方。
+当前日常主线不从 `projects/` 开始，而从：
 
-它的作用是：
+- [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md)
+- [`../exercises/go-ticket-api/`](../exercises/go-ticket-api/)
 
-> **当某几个后端概念已经分别理解以后，把它们按最小增量整合到一个长期可演进的系统里。**
+开始。
 
-当前综合项目：
+`projects/` 的作用是：
 
-- [`reliable-support-agent/`](reliable-support-agent/)：可靠工单 + Agent 后端。
+> 当多个后端概念已经分别理解以后，再把它们放进同一个系统，观察事务、身份、异步和部署之间的交互。
 
 ---
 
-## 为什么只有一个主项目
+# 当前主参考项目已经移到 Go Ticket API
 
-学习后端不需要为每个技术建一个巨大项目。
+当前真正用于每天跟写和学习的是：
 
-真正有价值的是看到同一个系统怎么从：
+- [`../exercises/go-ticket-api/README.md`](../exercises/go-ticket-api/README.md)
+
+它采用完整参考实现驱动的方式：
 
 ```text
-单服务 + 内存
-↓
-PostgreSQL
-↓
-Transaction / Auth / Idempotency
-↓
-Redis / Concurrency（确有需要时）
-↓
-Outbox / Worker
-↓
-Agent / RAG
-↓
-可选 Gateway / K8s
+对话讲解
+→ 完整 Go 参考
+→ 跟写必要代码
+→ 独立小改
+→ 故障实验
+→ Review
 ```
 
-逐步演进。
-
-这样每个新组件都有前一版本的真实痛点，而不是为了技术栈清单存在。
+不要求先从空白目录设计整个工程。
 
 ---
 
-## 什么时候应该来做 Project
+# `reliable-support-agent` 的新定位
 
-不是“Lesson 看完就必须做”。
+原有：
 
-更适合在你已经能单独解释某个概念以后：
+- [`reliable-support-agent/`](reliable-support-agent/)
+
+保留为**可选的后端与 Agent 集成参考**，不再是当前主学习项目。
+
+原因：学习者已有单独的 Agent 学习仓库。本仓库主要补 Go 和传统后端能力，不重复学习 Agent 框架、Prompt、RAG 或 Eval。
+
+这个项目只在需要验证下面的连接时使用：
 
 ```text
-我已经懂 transaction
-→ 把 transaction 放进真实 create/close 流程
+Agent Task
+→ 持久状态 / Worker / Retry
 
-我已经懂 idempotency
+Tool
+→ Authentication / Authorization / Idempotency / Audit
+
+RAG
+→ tenant / ACL filtering / source lifecycle
+
+Model Provider
+→ timeout / budget / observability
+```
+
+如果当前只在学习 Router、Middleware、PostgreSQL 或事务，不需要打开 Agent 项目。
+
+---
+
+# 什么时候进入 Project
+
+适合进入整合项目的信号：
+
+```text
+已经能单独解释一个概念
+↓
+想看它和其他边界怎样交互
+```
+
+例如：
+
+```text
+已经懂 transaction
+→ 放进 create / close 流程
+
+已经懂 idempotency
 → 模拟 COMMIT 后 response 前失败
 
-我已经懂 Agent Tool 权限
-→ 在真实 task/tool 流里验证
+已经懂 Worker
+→ 模拟业务 COMMIT 后 ACK 前崩溃
 ```
 
-Project 的价值是整合和暴露交互问题。
-
----
-
-## 当前项目入口
-
-进入 [`reliable-support-agent/README.md`](reliable-support-agent/README.md) 后，按需要看：
-
-- [`phases.md`](reliable-support-agent/phases.md)：系统为什么逐阶段增加复杂度；
-- [`architecture.md`](reliable-support-agent/architecture.md)：每阶段架构和失败边界；
-- [`acceptance.md`](reliable-support-agent/acceptance.md)：当前阶段究竟要证明什么；
-- [`milestones.md`](reliable-support-agent/milestones.md)：能力证据，而不是功能完成率。
-
----
-
-## 项目最重要的纪律
-
-每加入一个组件，都回答：
+不适合的理由：
 
 ```text
-前一版具体哪里不够？
+企业项目一般都有
+想让架构图看起来高级
+简历上想多写技术名
+```
+
+---
+
+# 项目纪律
+
+每加入一个组件都回答：
+
+```text
+前一版哪里不够？
 这个组件解决什么？
 它新增什么失败？
 我怎么证明？
 有没有更简单方案？
 ```
 
-如果只能回答：
-
-```text
-“企业项目一般都有”
-```
-
-就先不要加。
+如果这些问题答不出来，就先回到 Go 主线和当前章节。
 
 ---
 
-## AI 在 Project 里的角色
+# AI 在 Project 中的角色
 
-AI 可以：
+AI 可以提供：
 
-- 解释设计；
-- review；
-- 帮你设计失败测试；
-- 在明确要求时给 reference implementation；
-- 帮你比较不同方案。
+- 完整参考实现；
+- 设计和调用链解释；
+- 失败测试；
+- Code Review；
+- 方案比较；
+- 故障推演。
 
-但不能把：
+但项目完成的证据不是“AI 生成了全部代码”，而是学习者能够：
 
 ```text
-AI 一次生成了 P0～P6
+解释请求链
+指出事实 owner
+说明 transaction 边界
+处理重复与并发
+定位失败
+读懂测试与观测证据
 ```
-
-当成学习完成。
-
-真正验收是你能自己解释请求链、事实 owner、transaction、重复、宕机恢复和测试证据。
 
 ---
 
-## 项目做到哪算“完成”
+当前结论：
 
-不要求一定做到最后一个 Phase。
-
-如果做到 P2，你已经能非常扎实地独立解释：
-
-```text
-HTTP
-分层
-PostgreSQL
-Transaction
-Authentication
-Authorization
-Idempotency
-并发冲突
-```
-
-这比让 AI 帮你启动一个包含 Kafka/K8s/微服务但自己讲不清的 P6 更有价值。
-
-项目的终点由能力决定，不由技术数量决定。
+> **日常学习跟随 Go Ticket API；`projects/` 只用于后续整合，Agent 项目是可选桥接，不再占据后端主线。**

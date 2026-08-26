@@ -2,73 +2,72 @@
 
 最后更新：2026-08-26
 
-这份文件回答：
+这份文件只回答：
 
-> **如果一个新的 ChatGPT / Codex 会话现在接手教学，应该从哪里继续，而不是从头重讲整个仓库？**
+> **下一次新的 ChatGPT / Codex 会话应该从哪里继续，以及当前采用什么学习方式？**
 
-它是动态文件。出现明显学习进展、方向变化，或用户明确说“更新仓库/沉淀仓库”时，应更新这里。
+长期能力地图见 [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md) 和 [`../GROWTH_PATH.md`](../GROWTH_PATH.md)。
 
 ---
 
-# 当前成长阶段
+# 当前技术学习定位
 
-当前大致处于：
+公开、长期有效的技术上下文：
 
 ```text
-GROWTH_PATH S0 后端新手
-        ↓
-正在向 S1 API 初学者过渡
+Agent 工程岗位约 4 个月
+日常使用 Codex / AI Coding 参与真实项目
+Python 和 Agent/RAG 应用经验相对更好
+Go 与传统后端工程基础仍然薄弱
 ```
 
-注意：这是当前学习切入点，不是能力标签或职位评价。
-
-很多技术已经“见过”，但不能因此默认达到独立实现水平。
-
----
-
-# 当前主线主题
-
-## HTTP Request -> Response 完整生命周期
-
-当前正在建立这张可用于写代码、读代码和排错的后端心智图：
+当前后端主线大致处于：
 
 ```text
-Client
-→ Domain / DNS
-→ IP + Port
-→ listening socket
-→ TCP connection
-→ TLS（HTTPS）
-→ OS network stack / socket
-→ Go process
-→ net/http
-→ *http.Request
-→ ServeMux / Router
-→ Middleware
-→ Authentication
-→ Principal
-→ Authorization
-→ Handler
-→ Service
-→ Repository
-→ SQL / PostgreSQL
-→ HTTP Response
-→ Client
+GROWTH_PATH S0
+→ 正在进入 S1 API 初学者
 ```
 
-2026-08-26 对话中的高密度整理见：
-
-- [`../notes/learning-journal/2026-08-26-http-network-go-handler.md`](../notes/learning-journal/2026-08-26-http-network-go-handler.md)
+这只是后端基础切入点，不是对整体工作能力或职位的评价。
 
 ---
 
-# 已通过本轮对话复述的部分
+# 已确认的学习方式变化
 
-以下内容已经能在提示很少的情况下给出正确方向，但仍然只代表“心智模型初步建立”，不代表已经独立编码熟练。
+从 2026-08-26 起，默认不再要求学习者从空白目录手搓整套项目。
 
-## 1. Request line / Header
+采用：
 
-已经能区分：
+```text
+对话讲清问题和调用链
+↓
+完整、正确、可运行的参考实现
+↓
+跟写当前必要的 30～120 行代码
+↓
+运行测试 / curl / 故障实验
+↓
+独立完成一个小变化
+↓
+AI Review
+```
+
+学习者主要通过对话学习；代码用于建立控制力，不用于证明能否背着默写样板。
+
+完整方法见：
+
+- [`../LEARNER_PROFILE.md`](../LEARNER_PROFILE.md)
+- [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md)
+
+---
+
+# 已建立第一轮心智模型
+
+以下内容已经能在提示较少时说出正确方向，但还需要在真实 Go 代码和测试中巩固。
+
+## HTTP Request
+
+已能区分：
 
 ```text
 Method
@@ -85,54 +84,24 @@ Content-Type
 关键关系：
 
 ```text
-Content-Type
-= 当前 Body 是什么格式
-
-Accept
-= Client 希望收到什么格式
-```
-
-以及：
-
-```text
-Authorization Header
-= 携带 Credential
-≠ Authorization 已经通过
-```
-
-## 2. Router 与 404 / 405
-
-已经纠正并能复述：
-
-```text
 Method + Route Pattern
 → 选择 Handler
 
 Path Parameter
-→ 决定这个 Handler 处理哪个具体资源
+→ 决定当前 Handler 处理哪个资源
 ```
 
 ```text
-Path 匹配不到
+Path 不存在
 → 404
 
-Path 能匹配，但 Method 不支持
+Path 存在但 Method 不允许
 → 405
 ```
 
-## 3. Authentication / Authorization
+## Authentication / Authorization
 
-已经能区分：
-
-```text
-Authentication
-= 你是谁？
-
-Authorization
-= 你能做什么？
-```
-
-并理解：
+已建立：
 
 ```text
 Credential
@@ -141,290 +110,244 @@ Credential
 → Authorization
 ```
 
-`401` 与 `403` 的分层关系已经建立，但后续仍需要在真实代码中反复连接。
+```text
+Authentication
+= 你是谁
 
-## 4. Client / DNS / IP / Port / listen
+Authorization
+= 你能做什么
+```
 
-已经理解：
+以及：
+
+```text
+Authorization Header
+= 携带 Credential
+≠ 已经授权成功
+```
+
+## 网络到 Go
+
+已建立第一轮关系：
 
 ```text
 Client
-= 主动发请求的一方
-≠ 前端页面的同义词
-```
-
-以及：
-
-```text
-Domain
-→ DNS
-→ IP
-→ Port
-→ connection
-```
-
-能够用自己的话解释 `listen`：进程通过操作系统在某个 `IP:Port` 等待外部连接。
-
-## 5. TCP 与 HTTP
-
-已经明确：
-
-```text
-TCP Connection
-≠ HTTP Request
-```
-
-当前心智模型：
-
-```text
-TCP
-= 为应用提供可靠、有序的字节流
-
-HTTP
-= 定义 Request / Response 的格式和语义
-```
-
-不需要现在深入拥塞控制、sequence number 等底层算法。
-
-## 6. TLS / HTTPS / Nginx
-
-已经讲过并建立初步连接：
-
-```text
-HTTP
-↓
-TLS
-↓
-TCP
-```
-
-TLS 主要解决：机密性、完整性、服务器身份验证。
-
-已经知道：
-
-```text
-JWT Signature
-≠ 网络传输加密
-```
-
-因此 JWT 仍需要 HTTPS。
-
-Nginx 当前只需掌握：
-
-```text
-Reverse Proxy
-TLS termination
-Load Balancing
-```
-
-以及：
-
-```text
-Nginx ≠ API Gateway 这个架构概念本身
-```
-
-## 7. OS / Socket / Process / Go `net/http`
-
-已经建立：
-
-```text
-Network
-→ OS network stack
-→ Socket
-→ Go Process
+→ Domain / DNS
+→ IP + Port
+→ listening socket
+→ TCP connection
+→ TLS
+→ OS / Socket
+→ Go process
 → net/http
+→ *http.Request
 ```
 
-能区分：
+当前深度已经足够继续后端主线，不需要继续深入 TCP 拥塞控制、TLS 密码套件或 Nginx worker 模型。
+
+## Go `net/http`
+
+已能解释：
 
 ```text
-Port
-= 编号
-
-Socket
-= OS 管理、程序用于网络通信的对象/端点
+http.ListenAndServe
+≠ 直接调用 Handler
 ```
 
-并理解：
+它概念上包含监听、接受连接、解析 HTTP、构造 Request、调度 Handler 和写回 Response。
 
-```go
-http.ListenAndServe(":8080", handler)
-```
-
-概念上不是“直接执行 Handler”，而是封装了监听、接受连接、读取/解析 HTTP、构造 `*http.Request`、调度 Handler、写回 Response 等过程。
-
-## 8. `http.Handler` / `HandlerFunc`
-
-这是当前最新通过复述的点。
-
-核心接口：
+已理解：
 
 ```go
 type Handler interface {
-    ServeHTTP(ResponseWriter, *Request)
+    ServeHTTP(http.ResponseWriter, *http.Request)
 }
 ```
 
-已经能用自己的话说出：
+以及：
 
-> `HandlerFunc` 有 `ServeHTTP`，因此满足 `http.Handler`；它把普通 `func(w, r)` 对接/适配到 Go HTTP Handler 体系。
+> `HandlerFunc` 拥有 `ServeHTTP` 方法，因此可以把普通 `func(w, r)` 适配成 `http.Handler`。
 
-需要继续通过真实 Go 代码巩固 `ServeMux -> Handler -> ServeHTTP` 调用链。
+相关学习日志：
 
----
-
-# 当前精确接棒点
-
-**不要重新从 DNS、TCP、JWT 开始长篇复习。**
-
-除非复述明显退化，否则下一步直接进入：
-
-# Middleware
-
-重点真正讲清：
-
-```text
-Request
-↓
-Request ID Middleware
-↓
-Logging Middleware
-↓
-Authentication Middleware
-↓
-Handler
-```
-
-不能只说“中间件就是在中间执行”。需要解释：
-
-1. Middleware 输入通常也是一个 `http.Handler`；
-2. Middleware 返回一个新的 `http.Handler`；
-3. wrapper / onion 模型为什么成立；
-4. `next.ServeHTTP(w, r)` 到底表示什么；
-5. 为什么可以在 `next` 前做认证，在 `next` 后统计耗时；
-6. 为什么 Request ID、Logging、Authentication 等横切逻辑不应该复制到每个业务 Handler；
-7. Middleware 与 Router、Handler 的真实组合顺序如何变化。
-
-建议用最小 Go 例子，但仍然先讲调用链和数据流，再讲语法。
+- [`../notes/learning-journal/2026-08-26-http-network-go-handler.md`](../notes/learning-journal/2026-08-26-http-network-go-handler.md)
 
 ---
 
-# Middleware 之后的顺序
-
-Middleware 讲通后继续：
+# 当前精确章节
 
 ```text
-Handler
-→ Service
-→ Repository
-→ Database
+GO_BACKEND_TRACK
+第 3 章：Middleware
 ```
 
-必须能用自己的话解释：
+主项目：
 
-```text
-Handler
-= HTTP adapter
+- [`../exercises/go-ticket-api/`](../exercises/go-ticket-api/)
 
-Service
-= business use case / business rules
+当前 walkthrough：
 
-Repository
-= persistence boundary
+- [`../exercises/go-ticket-api/walkthrough/03-middleware.md`](../exercises/go-ticket-api/walkthrough/03-middleware.md)
 
-Database
-= business facts / source of truth
-```
+当前 practice：
 
-特别强调：
-
-```text
-Repository != 只是“放 SQL 的文件夹”
-```
-
-以及资源/tenant 范围为什么应该进入持久化边界，例如：
-
-```sql
-WHERE id = $1
-  AND tenant_id = $2
-```
+- [`../exercises/go-ticket-api/practice/03-middleware.md`](../exercises/go-ticket-api/practice/03-middleware.md)
 
 ---
 
-# 进入 `context.Context` 前的验收
+# 下一次对话直接从这里开始
 
-不要因为已经“讲过”就直接进入 `context.Context`。
+不要重新从 DNS、TCP、JWT 或 HandlerFunc 开始长篇复习，除非用户主动表示忘记。
 
-先做一次关闭文档复述，至少能完整说明：
+先用当前真实代码讲清：
+
+```go
+func RequestContext(next http.Handler) http.Handler
+func Authenticate(next http.Handler) http.Handler
+```
+
+顺序：
+
+## 1. Middleware 的形状
 
 ```text
-Client
-→ DNS
-→ IP + Port
-→ TCP / TLS
-→ OS / Socket
-→ Go net/http
-→ Request
-→ Router
-→ Middleware
-→ Authentication / Principal / Authorization
+输入：一个 http.Handler
+输出：一个新的 http.Handler
+```
+
+为什么它可以包装下一个 Handler。
+
+## 2. `next.ServeHTTP(w, r)`
+
+解释：
+
+```text
+继续把同一个 Request / ResponseWriter
+交给链条中的下一层
+```
+
+不调用它会怎样；调用两次又会怎样。
+
+## 3. Onion / Wrapper 顺序
+
+使用最小例子说明：
+
+```text
+Outer before
+→ Inner before
 → Handler
-→ Service
-→ Repository
-→ DB
-→ Response
+→ Inner after
+→ Outer after
 ```
 
-并能回答：
+## 4. 读取当前项目的真实组合
+
+当前 API 请求大致经过：
 
 ```text
-为什么 connection refused 不是 404？
-为什么 TLS error 还没到 Handler？
-为什么 Path 对、Method 错是 405？
-为什么 Authorization Header 不等于授权成功？
-为什么 TCP Connection 不等于 HTTP Request？
-为什么 HandlerFunc 能当 Handler？
-Middleware 为什么适合横切逻辑？
-Handler 为什么不应该直接塞满 SQL？
+RequestContext
+→ root ServeMux
+→ Authenticate
+→ api ServeMux
+→ endpoint Handler
 ```
 
-达到这里以后，下一自然主题才是：
+`/health` 不经过 Authenticate。
 
-# `context.Context`
+## 5. 参考代码跟写
 
-此时再连接：
+学习者按 walkthrough 跟写/阅读一个最小 AccessLog Middleware。
+
+## 6. 独立小变化
+
+至少完成一个：
 
 ```text
-HTTP Request
-↓
-Context(deadline / cancel / request-scoped metadata)
-↓
-Handler
-↓
-Service
-↓
-Repository
-↓
-DB / downstream
+给 AccessLog 增加 request_id
+或
+补一个证明 middleware before/after 顺序的 test
 ```
 
-然后再连接 goroutine、timeout、client disconnect、DB query cancellation。
+## 7. 故障实验
+
+临时注释掉：
+
+```go
+next.ServeHTTP(w, r)
+```
+
+运行测试，观察后面的 Router / Handler 为什么完全不执行。实验后恢复代码。
 
 ---
 
-# 新会话教学规则
+# 当前能力证据判断
 
-新的 GPT 接手时：
+```text
+HTTP / 网络心智模型：L2 初步
+http.Handler / HandlerFunc：L2 初步
+Middleware：L1，正在进入 L2/L3
+Go 独立实现能力：尚缺足够代码证据
+```
 
-1. 先读 [`../LEARNER_PROFILE.md`](../LEARNER_PROFILE.md)；
-2. 再读本文件和本轮 learning journal；
-3. 不要从整个后端史重新讲起；
-4. 从 Middleware 这个 checkpoint 继续；
-5. 用户能准确复述的部分快速通过，不机械重复；
-6. 用户说模糊时立即降速，解释定义、为什么、输入、职责、输出、失败、前后关系；
-7. Go 代码仍然坚持“先调用链 / 数据流，再关键语法”；
-8. 最新用户消息永远优先于本文件。
+不要因为对话中已经听懂，就标记 Middleware 为 L3。
 
-当前一句话接棒说明：
+达到 Middleware 当前小节完成，至少需要：
 
-> **HTTP 请求从 Client、DNS、TCP/TLS、OS/Socket 到 Go `net/http`、`*http.Request`、Router、`http.Handler` / `HandlerFunc` 已经建立第一轮心智模型；下一步直接把 Go Middleware 的 wrapper/onion 调用链讲透，再进入 Handler -> Service -> Repository -> DB，完成整链复述后才进入 `context.Context`。**
+```text
+能画 wrapper/onion 调用顺序
++ 能解释 next.ServeHTTP
++ 跑过现有测试
++ 完成一个独立小变化
++ 观察一次 chain 被截断的失败
+```
+
+---
+
+# Middleware 之后
+
+继续：
+
+```text
+第 4 章
+Handler
+→ Service
+→ Repository
+→ Memory / Database
+```
+
+重点不要求从空白重写整个项目，而是顺着现有 create/get 流程：
+
+```text
+HTTP JSON
+→ Handler input
+→ Service business rule
+→ Repository persistence
+→ response/error mapping
+```
+
+然后再进入：
+
+```text
+Error / Config / Testing
+→ context.Context
+→ PostgreSQL
+```
+
+---
+
+# 新会话接棒规则
+
+新的 AI：
+
+1. 读 [`../LEARNER_PROFILE.md`](../LEARNER_PROFILE.md)；
+2. 读本文件；
+3. 读 [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md) 当前章节；
+4. 打开 Middleware walkthrough 和真实代码；
+5. 对话优先，代码跟写按需要；
+6. 不强迫从空白实现；
+7. 每章仍要求一个独立变化和故障证据；
+8. 最新用户消息优先于本文件。
+
+当前一句话接棒：
+
+> **从 Go Middleware 的 `func(next http.Handler) http.Handler`、`next.ServeHTTP` 和 onion 调用链继续；用现有 RequestContext / Authenticate 作为完整参考，学习者只跟写必要代码，再完成一个独立小改与 chain 截断故障实验。**
