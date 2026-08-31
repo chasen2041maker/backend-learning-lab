@@ -21,14 +21,14 @@
 | --- | --- | --- | --- | --- |
 | 01 | HTTP Server / Handler | 概念已讲 | `cmd/server/main.go`、`handler.go` | 能解释 HandlerFunc 为什么满足 Handler |
 | 02 | Router / ServeMux | 概念已讲 | `handler.go:Register` | 能区分 404 / 405、Method + Pattern |
-| 03 | Middleware | **当前** | `RequestContext`、`Authenticate` | 一个独立小改 + chain 截断故障 |
-| 04 | Handler → Service → Repository | 未开始 | `handler.go`、`service.go`、`repository.go` | 独立新增一个小业务字段/规则 |
-| 05 | Error / Config / Logging / Testing | 未开始 | `errors.go`、tests、`main.go` | 新错误码 + handler test |
-| 06 | `context.Context` | 未开始 | 全调用链 | Slow Repository deadline test |
+| 03 | Middleware | 概念已讲（待实践证据） | `RequestContext`、`Authenticate` | 一个独立小改 + chain 截断故障 |
+| 04 | Handler → Service → Repository | **当前：L2 对话理解推进** | `handler.go`、`service.go`、`repository.go` | 独立新增一个小业务字段/规则 + test |
+| 05 | Error / Config / Logging / Testing | 未开始（已在第 4 章接触错误回传） | `errors.go`、tests、`main.go` | 新错误码 + handler test |
+| 06 | `context.Context` | 下一自然概念（尚未验收） | 全调用链 | Slow Repository deadline test |
 | 07 | PostgreSQL | 未开始 | `sql-postgres/` | Repository 替换 + integration evidence |
-| 08 | Auth / Authorization | 概念初步 | `identity.go`、tenant boundary | 跨租户/无权限测试 |
-| 09 | Transaction / Idempotency | 未开始 | SQL / reliability labs | COMMIT 后响应前失败实验 |
-| 10 | Concurrency / Redis | 未开始 | MemoryRepository / redis-lab | bounded concurrency 或明确 Redis role |
+| 08 | Auth / Authorization | 概念初步，tenant boundary 已连接 Repository | `identity.go`、tenant boundary | 跨租户/无权限测试 |
+| 09 | Transaction / Idempotency | 未开始（已初步接触 optimistic version conflict） | SQL / reliability labs | COMMIT 后响应前失败实验 |
+| 10 | Concurrency / Redis | 未开始（已在 MemoryRepository 接触 RWMutex） | MemoryRepository / redis-lab | bounded concurrency 或明确 Redis role |
 | 11 | Async / Outbox / Worker | 未开始 | reliability labs / SQL | ACK/COMMIT 故障恢复 |
 | 12 | Observability / Delivery | 未开始 | metrics / Docker / CI | 可行动指标 + deployment failure |
 
@@ -110,7 +110,7 @@ Path Parameter -> 当前资源
 
 ---
 
-# 第 3 章：Middleware（当前）
+# 第 3 章：Middleware（概念已讲，待实践证据）
 
 ## 先读
 
@@ -125,68 +125,127 @@ internal/ticket/handler.go: RequestContext
 internal/ticket/identity.go: Authenticate
 ```
 
-## 当前学习顺序
+## 已建立
 
 ```text
-1. func(next http.Handler) http.Handler 的输入输出
-2. http.HandlerFunc 如何适配匿名函数
-3. next.ServeHTTP(w, r) 如何继续 chain
-4. before / after 与 onion model
-5. RequestContext 的职责
-6. Authenticate 的 early return
-7. 当前真实 middleware composition
-8. AccessLog 参考代码
-9. 一个独立小改
-10. 注释 next 的故障实验
+func(next http.Handler) http.Handler 的输入输出
+http.HandlerFunc 如何适配匿名函数
+next.ServeHTTP(w, r) 如何继续 chain
+before / after 与 onion model
+RequestContext / Authenticate 的基本职责
+启动时组装 vs 请求时执行
+闭包为什么还能记住 next
 ```
 
-## 完成证据
+## 尚缺完成证据
 
 ```text
-[ ] 能画 middleware before/after 顺序
-[ ] 能解释 next.ServeHTTP
-[ ] 能读懂 RequestContext
-[ ] 能读懂 Authenticate
-[ ] go test ./... 通过
+[ ] go test ./... 通过（作为本章主动验证）
 [ ] 完成一个独立小改
 [ ] 观察一次 chain 被截断
 ```
 
 ---
 
-# 第 4 章：Handler → Service → Repository
+# 第 4 章：Handler → Service → Repository（当前）
 
 ## 参考请求
 
 ```text
 POST /api/v1/tickets
+GET /api/v1/tickets/{id}
+POST /api/v1/tickets/{id}/close
 ```
 
-## 阅读链
+## 已顺过的真实链
 
 ```text
 Handler.create
 → Service.Create
 → Repository.Create
-→ response
+→ MemoryRepository map
 ```
-
-## 重点
 
 ```text
-Handler 负责 HTTP
-Service 负责业务用例
-Repository 负责持久化边界
-Memory map 只是当前事实实现
+Handler.get
+→ Service.Get
+→ Repository.Get
+→ Ticket / ErrNotFound
+→ Service
+→ Handler
 ```
-
-## 独立变化候选
 
 ```text
-priority = low | normal | high
+Handler.close
+→ Service.Close
+→ Service.Get
+→ Repository.Get
+→ 业务状态 / Version 检查
+→ StatusOpen -> StatusClosed
+→ Repository.Update
+→ map
 ```
 
-学习者不从空白写整套 API，只独立判断并修改必要层与测试。
+## 已建立的重点
+
+```text
+Handler
+= HTTP 输入 / 输出适配
+
+Service
+= 业务用例负责人，组织步骤、执行业务规则、修改状态
+
+Repository
+= Service 访问和修改业务事实的数据边界
+
+MemoryRepository
+= 当前 Repository 的具体内存实现
+```
+
+当前已通过对话建立：
+
+```text
+map[string]Ticket 与 Python dict 的阅读类比
+Create / Get / Update
+TenantID scope
+Repository -> Service -> Handler 的错误反向传播
+Service.Close 的状态转换
+Version / expectedVersion
+optimistic conflict / lost update 的第一轮模型
+RWMutex：RLock vs Lock
+defer Unlock
+RWMutex 与 Version 解决不同问题
+```
+
+## 当前明确未完成
+
+这部分主要是参考代码 + 对话理解，不等于 L3。
+
+仍需：
+
+```text
+[ ] 独立完成一个第 4 章小变化（候选：priority）
+[ ] 修改/补至少一个 test
+[ ] 主动制造一个 conflict / 分层错误并解释
+```
+
+## 下一自然话题
+
+Repository 方法一直携带：
+
+```go
+ctx context.Context
+```
+
+下一次可以沿：
+
+```text
+r.Context()
+→ Service
+→ Repository
+```
+
+讲 `deadline / cancel / ctx.Err()`，但这只是自然跨章节连接，不代表第 4 章已经完成验收。
 
 ---
 
@@ -214,6 +273,17 @@ service error
 handler mapping
 test
 ```
+
+第 4 章已提前接触：
+
+```text
+Repository error
+→ Service
+→ Handler
+→ HTTP status / stable code
+```
+
+但还没有系统进入本章。
 
 ---
 
@@ -276,6 +346,8 @@ Authorization Header
 
 教学 Token 保留，JWT/Session 只作为认证方案比较。
 
+当前已经通过 `Repository.Get/Update` 看到 tenant scope 的第一轮真实落点，但仍缺主动跨租户测试。
+
 ---
 
 # 第 9 章：Transaction / Idempotency
@@ -291,6 +363,8 @@ COMMIT 后响应前失败
 ```
 
 不是先背 ACID 缩写。
+
+当前在 MemoryRepository 的 `expectedVersion` 中已经预览了 lost update / optimistic conflict，但尚未进入数据库事务实现。
 
 ---
 
@@ -310,6 +384,8 @@ retry budget
 ```text
 cache / session / rate limit / coordination / stream
 ```
+
+当前只在 MemoryRepository 中建立了 `RWMutex` 的最小模型：多读可并行、写入独占；不把这视为第 10 章完成。
 
 ---
 
@@ -353,9 +429,9 @@ rollout / rollback
 ```text
 1. progress/current-focus.md
 2. 本文件当前章节
-3. 当前 walkthrough
+3. 当前 walkthrough / 真实代码
 4. CODE_MAP 中对应调用链
-5. 运行 go test ./...
+5. 需要进入实践证据时再运行 go test ./...
 ```
 
 不要重新从第 1 章开始机械复习。

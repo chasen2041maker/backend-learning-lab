@@ -1,12 +1,12 @@
 # 当前学习接棒点
 
-最后更新：2026-08-27
+最后更新：2026-08-31
 
 这份文件只回答：
 
 > **下一次新的 ChatGPT / Codex 会话应该从哪里继续，以及当前采用什么学习方式？**
 
-长期能力地图见 [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md) 和 [`../GROWTH_PATH.md`](../GROWTH_PATH.md)。
+长期能力地图见 [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md) 和 [`../GROWTH_PATH.md`](../GROWTH_PATH.md)。本次详细学习记录见 [`2026-08-31.md`](2026-08-31.md)。
 
 ---
 
@@ -19,7 +19,7 @@ Go 语法与传统后端工程仍是主要短板
 而是通过对话 + 完整参考代码建立对后端代码的控制力
 ```
 
-当前后端主线大致处于：
+当前后端主线仍处于：
 
 ```text
 GROWTH_PATH S0
@@ -30,60 +30,40 @@ GROWTH_PATH S0
 
 ---
 
-# 当前默认学习方式
+# 当前教学方式：必须保持
 
-继续采用：
-
-```text
-对话先讲清问题 / 调用链
-↓
-看完整、正确、可运行的 Go 参考实现
-↓
-必要时跟写当前小段代码
-↓
-把 Go 语法拆开解释
-↓
-运行测试 / curl / 故障实验
-↓
-再做一个小变化
-```
-
-用户主要通过对话学习；不要强迫从空白目录重写整套项目。
-
-遇到 Go 代码时，优先按下面顺序讲：
+用户主要通过对话学习。遇到 Go 代码时：
 
 ```text
-1. 这段代码想解决什么问题
-2. 请求 / 数据怎么流
-3. 关键 Go 语法逐个拆开
-4. 再回到完整代码
+1. 先讲这段代码解决什么真实后端问题
+2. 顺请求 / 数据 / 状态变化讲谁调用谁
+3. 说明失败怎么传播
+4. Go 语法挡住理解时，再局部用 Python 类比拆语法
+5. 回到真实 Go 代码
 ```
 
-Go 语法如果遮挡了后端概念，先拆语法，不要误判为后端概念没懂。
+不要把教学变成：
+
+```text
+先讲 Go interface / struct / mutex 的抽象定义
+→ 再出脱离项目的小语法题
+```
+
+用户已经明确反馈这种教材式风格不适合当前学习方式。
+
+仍然不要强迫从空白目录重写整套项目；当前目标是读懂、控制、修改、测试和排错。
 
 ---
 
-# 已建立第一轮心智模型
+# 已建立的前置心智模型
 
-以下内容已经通过多轮对话建立第一轮理解，但仍不等于独立编码熟练。
+以下不需要机械从头重讲，除非用户主动表示忘记。
 
 ## HTTP / Router / Auth
 
-已能区分：
-
-```text
-Method / Path / Route Pattern / Path Parameter
-404 / 405
-Authorization Header / Credential
-Authentication / Principal / Authorization
-401 / 403
-```
-
-关键关系：
-
 ```text
 Method + Route Pattern
-→ 选择 Handler
+→ Handler
 
 Credential
 → Authentication
@@ -91,9 +71,16 @@ Credential
 → Authorization
 ```
 
-## 网络到 Go `net/http`
+已能区分：
 
-已建立：
+```text
+404 / 405
+401 / 403
+Authorization Header / Credential
+Principal / tenant
+```
+
+## 网络到 Go `net/http`
 
 ```text
 Client
@@ -106,287 +93,91 @@ Client
 → *http.Request
 ```
 
-当前深度已足够继续后端主线，不需要继续深入 TCP / TLS 内部算法。
+当前深度足够，不继续下钻网络内部算法。
 
-## `http.Handler` / `HandlerFunc`
+## Middleware
 
-已能解释：
-
-```go
-type Handler interface {
-    ServeHTTP(http.ResponseWriter, *http.Request)
-}
-```
-
-以及：
-
-```text
-普通 func(w, r)
-→ HandlerFunc
-→ 有 ServeHTTP
-→ 满足 http.Handler
-```
-
----
-
-# 第 3 章 Middleware：当前状态
-
-Middleware 的核心调用模型已经在对话中讲通到 L2 初步。
-
-已能用自己的话理解：
+已建立 L2 初步对话理解：
 
 ```text
 Middleware
-= 给原 Handler 外面包一层公共逻辑
-
-func Middleware(next http.Handler) http.Handler
-= 输入一个 Handler，返回一个新的 Handler
+= 包住下一个 Handler 的公共逻辑
 
 next.ServeHTTP(w, r)
-= 调用里面那一层 Handler，并把当前 w / r 继续传下去
+= 把当前请求交给下一层
+
+启动时组装
+请求时从外向内执行
+return 后从内向外返回
 ```
 
-已经明确：
-
-```text
-程序启动阶段
-→ 一层层组装 Handler
-
-请求到达阶段
-→ 从最外层开始执行
-→ next 调入内层
-→ 内层 return 后回到外层继续执行 next 后面的代码
-```
-
-能够理解：
-
-```text
-Logging before
-→ Authentication
-→ Handler
-→ Authentication return
-→ Logging after
-```
-
-并已纠正以下误区：
-
-```text
-next.ServeHTTP 不是“请求这时才进入系统”
-而是当前 Middleware 已经拿到请求后，再把它交给下一层
-```
-
-以及：
-
-```text
-Middleware 的嵌套调用形状像递归
-但正常情况不是递归：
-A 调 B，B 调 C，而不是函数调用自己
-```
-
-还理解了 Go Middleware 代码的结构：
-
-```go
-func Logging(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // 请求到来时执行
-    })
-}
-```
-
-其中：
-
-```text
-外层 Logging(next)
-→ 程序启动时负责组装
-
-内部匿名 func(w, r)
-→ 请求到来时真正执行
-
-http.HandlerFunc(...)
-→ 把普通函数适配为 http.Handler
-
-闭包
-→ 让返回后的 Handler 仍然记住 next 是谁
-```
-
-注意：目前主要是对话理解证据，尚未完成独立 Middleware 小改和 chain 截断故障实验，所以不要标记为 L3。
+理解 `HandlerFunc`、匿名函数、闭包的第一轮关系，但尚未完成独立小改和 chain 截断故障实验，不标记 L3。
 
 ---
 
 # 当前精确章节：第 4 章 Handler → Service → Repository
 
-现在已经从 Middleware 进入：
-
-```text
-GO_BACKEND_TRACK
-第 4 章
-Handler
-→ Service
-→ Repository
-→ Memory / Database
-```
-
 主项目：
 
 - [`../exercises/go-ticket-api/`](../exercises/go-ticket-api/)
 
-当前正在顺着真实的 `Create Ticket` 请求学习：
-
-```http
-POST /api/v1/tickets
-Authorization: Bearer lab-token-tenant-a
-Content-Type: application/json
-
-{
-  "title": "无法登录"
-}
-```
-
-真实调用链已经讲到：
+当前已经不只停在 `Repository` 名词，而是顺过真实的：
 
 ```text
-Request
-↓
-Authenticate Middleware
-↓
-h.create                  Handler
-↓
-h.service.Create(...)     Service
-↓
-repository.Create(...)    Repository
-↓
-MemoryRepository.tickets  当前内存存储
-↓
-一层层返回
-↓
-201 Created
+Create Ticket
+Handler.create
+→ Service.Create
+→ Repository.Create
+→ MemoryRepository
+→ map
+
+Get Ticket
+Handler.get
+→ Service.Get
+→ Repository.Get
+→ map
+→ Ticket / ErrNotFound 反向返回
+
+Close Ticket
+Handler.close
+→ Service.Close
+→ Service.Get
+→ Repository.Get
+→ 业务状态/Version 检查
+→ open -> closed
+→ Repository.Update
+→ map
 ```
 
 ---
 
-# 第 4 章已经讲到的具体内容
+# 第 4 章当前已讲通的内容
 
-## Handler
+## 1. 三层职责
 
-已开始理解：
-
-```text
-Handler = HTTP adapter
-```
-
-它负责：
-
-```text
-从 Context 取 Principal
-解析 HTTP JSON Body
-把 JSON 转成 CreateInput
-调用 Service
-把 Service 结果 / 错误映射回 HTTP
-```
-
-已经看过真实代码：
-
-```go
-func (h *Handler) create(w http.ResponseWriter, r *http.Request)
-```
-
-并解释过：
-
-```text
-(h *Handler)
-≈ 方法接收者 receiver
-可暂时类比 Python self
-```
-
-以及：
-
-```go
-var input CreateInput
-
-decodeStrictJSON(w, r, &input)
-```
-
-当前理解：
-
-```text
-HTTP JSON
-→ Go CreateInput struct
-
-&input
-→ 把真实 input 的地址交给解析函数，让它修改外面的 input
-```
-
-## Handler → Service 边界
-
-已经讲到：
-
-```go
-value, err := h.service.Create(
-    r.Context(),
-    principal.TenantID,
-    input,
-)
-```
-
-重点已说明：Handler 没有把 `ResponseWriter` 或整个 `*http.Request` 交给 Service。
-
-当前心智模型：
+当前可继续强化：
 
 ```text
 Handler
-关心 HTTP
+= HTTP 输入/输出适配
 
 Service
-进入业务世界
+= 当前业务用例负责人，组织步骤、执行规则、修改业务状态
+
+Repository
+= Service 读写业务事实的数据访问边界
 ```
 
-## Service
-
-已经看过真实：
-
-```go
-func (s *Service) Create(
-    ctx context.Context,
-    tenantID string,
-    input CreateInput,
-) (Ticket, error)
-```
-
-并讲过：
+已纠正一个误区：
 
 ```text
-trim title
-验证 title / tenantID
-生成 ID
-生成服务器时间
-Status = open
-Version = 1
-构造 Ticket
+不是 Repository 调真正业务逻辑
+而是 Service 做业务，再调用 Repository 读写数据
 ```
 
-关键边界：
+## 2. MemoryRepository / map
 
-```text
-客户端只提交 title
-
-TenantID
-Status
-Version
-CreatedAt
-UpdatedAt
-
-都应该由服务端可信身份 / 业务逻辑生成或控制
-```
-
-## Repository
-
-已经讲到：
-
-```go
-created, err := s.repository.Create(ctx, value)
-```
-
-并看过当前 `MemoryRepository`：
+已看真实：
 
 ```go
 r.tickets[value.ID] = value
@@ -395,60 +186,179 @@ r.tickets[value.ID] = value
 当前理解：
 
 ```text
-Repository
-= Service 访问数据的边界
-≠ 只是“放 SQL 的文件夹”
+MemoryRepository
+= 当前 Repository 的具体实现
+
+map[string]Ticket
+≈ Python dict[str, Ticket]
+
+value.ID
+= key
+
+value
+= Ticket
 ```
 
-当前 Go 基线还没有 PostgreSQL；事实暂时存在内存 map，进程重启会消失。后续 PostgreSQL 章节会把 Repository 实现替换为 SQL 持久化。
+已明确进程重启后内存数据消失。
+
+## 3. Create / Get / Update
+
+已建立：
+
+```text
+Create
+= 放进 map
+
+Get
+= 按 id 从 map 拿出来
+
+Update
+= 读取当前值、检查条件、用新 Ticket 覆盖旧 Ticket
+```
+
+已讲 Go：
+
+```go
+value, ok := r.tickets[id]
+```
+
+其中 `ok` 表示 map 是否存在该 key。
+
+## 4. Tenant boundary
+
+已看：
+
+```go
+if !ok || value.TenantID != tenantID {
+    return Ticket{}, ErrNotFound
+}
+```
+
+当前理解：跨 tenant 资源对当前调用者按 NotFound 处理，避免资源存在性泄露。
+
+已把链重新接到：
+
+```text
+Authentication
+→ Principal.TenantID
+→ Handler
+→ Service
+→ Repository tenant scope
+```
+
+## 5. 返回链 / 错误传播
+
+已建立：
+
+```text
+调用：Handler → Service → Repository
+返回：Repository → Service → Handler
+```
+
+成功值和 error 都沿调用栈向上返回；Handler 最终把业务错误映射为 HTTP status / stable code。
+
+## 6. Service.Close 的业务作用
+
+已顺过：
+
+```text
+先 Get
+→ 是否已经 closed
+→ expectedVersion 是否有效
+→ 当前 Version 是否匹配
+→ StatusOpen -> StatusClosed
+→ Version + 1
+→ UpdatedAt
+→ Repository.Update
+```
+
+因此已经开始真正理解：Service 不是中转站，而是业务状态变化发生和被组织的地方。
+
+## 7. Version / optimistic conflict
+
+已建立第一轮心智模型：
+
+```text
+Service 读取后到真正写入前
+别人可能已经修改数据
+```
+
+所以 Repository.Update 写入前仍要比较：
+
+```text
+current.Version
+vs
+expectedVersion
+```
+
+不匹配：
+
+```text
+→ ErrVersionConflict
+→ 不允许旧数据覆盖新数据
+```
+
+已经解释过 `lost update` 与 optimistic locking/optimistic concurrency 的基本问题，但尚未进入 PostgreSQL 实现。
+
+## 8. RWMutex / defer
+
+已看并能顺代码理解：
+
+```go
+r.mu.Lock()
+defer r.mu.Unlock()
+```
+
+以及：
+
+```go
+r.mu.RLock()
+defer r.mu.RUnlock()
+```
+
+当前最小模型：
+
+```text
+RLock
+= 读锁，多读者可并行
+
+Lock
+= 写锁，写入时独占
+
+defer Unlock
+= 函数退出前保证释放锁
+```
+
+必须继续区分：
+
+```text
+RWMutex
+= 当前 Go 进程内共享 map 的并发访问安全
+
+Version
+= 业务层面的旧数据覆盖保护
+```
+
+不要把两者混为一谈。
 
 ---
 
-# 下一位老师从这里直接继续
+# 当前 Go 阅读状态
 
-**不要重新讲 Middleware、DNS、TCP、HandlerFunc。**
-
-除非用户主动说忘了，否则直接继续第 4 章。
-
-当前最后一个尚未回答的检查题是：
-
-> **“新建 Ticket 的默认状态必须是 `open`”这条规则，主要应该放 Handler、Service 还是 Repository？为什么？**
-
-推荐先让用户回答这个很小的问题，再继续。
-
-预期方向：
+Go 仍然是主要摩擦点。当前已经局部建立的类比：
 
 ```text
-主要属于 Service
+(h *Handler) / (s *Service) / (r *MemoryRepository)
+≈ Python self 的阅读类比
+
+map[string]Ticket
+≈ dict[str, Ticket]
+
+nil error
+≈ 当前可以先理解为没有错误
 ```
 
-因为这是业务规则：即使以后不是通过 HTTP 创建 Ticket，这条规则仍然存在。
-
-但不要直接替用户作答；先让用户复述。
-
-回答后继续沿 `Create Ticket` 真实代码，把四层边界讲稳：
-
-```text
-Handler
-= HTTP 输入 / 输出适配
-
-Service
-= 业务用例和业务规则
-
-Repository
-= 业务层访问持久化事实的边界
-
-Memory / Database
-= 事实实际保存位置
-```
-
-接着建议讲：
-
-1. 为什么 `CreateInput` 和 `Ticket` 不是同一个 struct；
-2. 为什么 `TenantID` 不能从客户端 Body 信任；
-3. Repository interface 为什么让 Memory / PostgreSQL 可以替换；
-4. 错误如何 Repository → Service → Handler 反向传播；
-5. 再进入 `get` 或 `close` 流程观察分层，而不是立刻跳 PostgreSQL。
+这些只用于降低语法摩擦；不要重新维护一套 Python 主业务实现。
 
 ---
 
@@ -458,32 +368,59 @@ Memory / Database
 HTTP / 网络心智模型：L2 初步
 http.Handler / HandlerFunc：L2 初步
 Middleware：L2 初步（对话证据），尚未到 L3
-Handler / Service / Repository：L1 → 正在进入 L2
-Go 语法阅读：仍是当前主要摩擦点
-Go 独立实现：尚缺足够代码证据
+Handler / Service / Repository：正在形成 L2
+MemoryRepository Create/Get/Update：对话理解已建立
+Tenant boundary：对话理解已建立
+Version / optimistic conflict：第一轮心智模型已建立
+RWMutex / defer：能顺真实代码解释用途，尚无独立实现证据
+Go 独立实现：仍缺足够代码证据
 ```
 
-不要因为能跟着解释代码，就直接判定独立实现能力已经达到 L3。
+不要因为连续对话已经听懂，就直接标 L3。
 
 ---
 
-# 新会话接棒规则
+# 下一位老师从这里直接继续
 
-新的 AI：
+**不要重新讲 Middleware、DNS、TCP、HandlerFunc，也不要重新从“Repository 是什么”开始。**
 
-1. 读 [`../LEARNER_PROFILE.md`](../LEARNER_PROFILE.md)；
-2. 读本文件；
-3. 打开真实文件：
-   - `exercises/go-ticket-api/internal/ticket/handler.go`
-   - `service.go`
-   - `repository.go`
-   - `model.go`
-4. 从上面的默认状态 `open` 判断题继续；
-5. 对话优先，先讲职责和数据流，再拆 Go 语法；
-6. 不强迫从空白实现整个项目；
-7. 不要因为当前仓库已有高级代码，就默认用户已经掌握；
-8. 最新用户消息永远优先于本文件。
+当前下一自然问题是仓库里一直出现的：
 
-当前一句话接棒：
+```go
+ctx context.Context
+```
 
-> **Middleware 的 wrapper / next / onion / 匿名函数 / HandlerFunc / 闭包已经建立第一轮理解；当前已进入第 4 章，用真实 `POST /api/v1/tickets` 顺着 `h.create → Service.Create → Repository.Create → Memory map` 学分层。下一位先让用户回答“默认 `StatusOpen` 为什么属于 Service”，再继续讲 Handler / Service / Repository 的真实边界和错误回传。**
+直接沿真实调用链讲：
+
+```text
+r.Context()
+→ Handler
+→ Service
+→ Repository
+```
+
+先回答：
+
+1. `ctx` 最开始从哪里来；
+2. 为什么每层都继续传，而不是 Service 自己 `context.Background()`；
+3. Repository 开头的 `ctx.Err()` 在检查什么；
+4. client disconnect / deadline / cancel 怎样向下传播；
+5. 一个 Slow Repository 为什么应该能够被取消。
+
+Go 语法仍按“真实问题 → 数据流 → 局部拆语法”的顺序讲。
+
+注意：这会开始触碰第 6 章 `context.Context`，但第 4 章**尚未完成 L3 验收**。后面仍需回到第 4 章完成：
+
+```text
+一个独立小变化
++ 测试
++ 至少一个故障/冲突验证
+```
+
+再标记第 4 章完成。
+
+---
+
+# 当前一句话接棒
+
+> **用户已经从 `Service → Repository` 继续走进了 `MemoryRepository`：能顺着 Create/Get/Update 理解 map 的存取、tenant scope、成功/错误反向返回；又通过 `Service.Close` 建立了 Service 业务职责、Version/乐观并发冲突、lost update 的第一轮模型，并能区分 RWMutex（内存并发安全）与 Version（业务旧数据保护）。当前下一步直接沿 `ctx context.Context` 讲取消/超时如何从 Handler → Service → Repository 传播；Go 语法挡住时局部用 Python 类比，不要改成抽象语法课。**
