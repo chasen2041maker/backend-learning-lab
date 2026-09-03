@@ -1,88 +1,55 @@
 # 当前学习接棒点
 
-最后更新：2026-09-01
+最后更新：2026-09-03
 
-这份文件是**新的 ChatGPT / Codex / 其他账号最优先读取的精确接棒入口**。
+这份文件是新的 ChatGPT / Codex / 其他账号继续教学时最优先读取的精确入口。
 
-> 目标：新会话不依赖旧聊天记录，只读仓库就能知道用户已经学到哪里、哪些只是听懂、下一步从哪里继续、应该用什么教学方式。
+> 目标：不要依赖旧聊天记录，不要机械从头复习；先确认这里记录的当前模型，再从“下一步”继续。
 
-长期能力地图见：
+长期地图：
 
 - [`../LEARNER_PROFILE.md`](../LEARNER_PROFILE.md)
 - [`../GO_BACKEND_TRACK.md`](../GO_BACKEND_TRACK.md)
 - [`../GROWTH_PATH.md`](../GROWTH_PATH.md)
 
-最近详细学习记录：
+最近详细记录：
 
 - [`2026-08-31.md`](2026-08-31.md)：Repository / MemoryRepository / Version / RWMutex；
-- [`2026-09-01.md`](2026-09-01.md)：Context 请求生命周期传播、`Err()` / `Done()`；
-- [`2026-09-01-final.md`](2026-09-01-final.md)：`WithTimeout` / `WithDeadline`、Slow Repository、`context.Background()` 断链与跨账号最终接棒。
+- [`2026-09-01.md`](2026-09-01.md)：Request Context 传播、`Err()` / `Done()`；
+- [`2026-09-01-final.md`](2026-09-01-final.md)：Timeout / Deadline / Slow Repository / `Background()` 断链；
+- [`2026-09-03.md`](2026-09-03.md)：cancel 来源、数据库响应 Context、Repository interface / 多态 / DI。
 
 ---
 
-# 一、学习者与教学方式
+# 一、教学方式必须保持
 
-当前长期有效定位：
+当前主要短板仍是 Go 语法和传统后端工程边界；不要把“能沿真实代码解释”误判成“可以独立从空白实现”。
 
-```text
-Python / Agent 应用经验相对更强
-Go 语法与传统后端工程仍是主要短板
-```
-
-不要把“已经听懂某段真实 Go 代码”误判成“已经可以独立写 Go”。
-
-默认教学方式必须保持：
+默认方式：
 
 ```text
-1. 先讲这段代码解决什么真实后端问题
-2. 沿请求 / 数据 / 状态变化讲谁调用谁
-3. 说明失败怎么传播
-4. Go 语法挡住理解时，再局部用 Python 类比拆语法
-5. 回到真实 Go 代码
+真实后端问题
+→ 请求 / 数据 / 状态怎么流
+→ 谁调用谁、谁返回谁
+→ 失败怎么传播
+→ Go 语法挡住时局部用 Python 类比
+→ 回到真实 Go 代码
 ```
 
-用户已明确要求：
-
-> **讲解不要脱离当前主线。**
-
-不要把教学变成：
-
-```text
-抽象 Go 语法课
-→ interface / struct / channel / Context 名词堆砌
-→ 脱离 Ticket API 出小动物之类的语法题
-```
-
-也不要强迫从空白目录重写整套项目。
+不要把课程变成脱离 Ticket API 的抽象 Go 语法课，也不要强迫从空白重写整套项目。
 
 ---
 
-# 二、前置内容：不要机械重讲
-
-除非用户主动表示忘记，否则以下只需快速连接，不要从头长篇复习。
+# 二、前置内容：除非用户主动忘记，否则不要长篇重讲
 
 ## HTTP / Router / Auth
 
-已建立第一轮：
-
 ```text
-Method + Route Pattern
-→ Handler
-
-Credential
-→ Authentication
-→ Principal
-→ Authorization
+Method + Route Pattern → Handler
+Credential → Authentication → Principal → Authorization
 ```
 
-能区分第一轮：
-
-```text
-404 / 405
-401 / 403
-Authorization Header / Credential
-Principal / tenant
-```
+已建立 404/405、401/403、Authorization Header、Principal/Tenant 第一轮模型。
 
 网络主线已有：
 
@@ -102,30 +69,22 @@ Client
 已建立 L2 初步对话模型：
 
 ```text
-Middleware
-= 包住下一层 Handler 的公共逻辑
-
-next.ServeHTTP(w, r)
-= 把当前请求交给下一层
-
+Middleware = 包住下一层 Handler 的公共逻辑
+next.ServeHTTP(w, r) = 把当前请求交给下一层
 启动时组装
-请求时从外向内执行
-return 后从内向外返回
+请求时外 → 内执行
+return 后内 → 外返回
 ```
 
-已经理解 `HandlerFunc`、匿名函数、闭包的第一轮关系。
-
-仍缺：独立小改 + chain 截断故障实验，所以不标 L3。
+已理解 `HandlerFunc`、匿名函数、闭包第一轮关系；仍缺独立小改和 chain 截断实验，因此不标 L3。
 
 ---
 
-# 三、第 4 章 Handler → Service → Repository：已建立的主线
+# 三、Handler → Service → Repository 主线：当前已经讲到哪里
 
-主项目：
+主项目：[`../exercises/go-ticket-api/`](../exercises/go-ticket-api/)
 
-- [`../exercises/go-ticket-api/`](../exercises/go-ticket-api/)
-
-已经顺过真实请求：
+已经顺过：
 
 ```text
 Create Ticket
@@ -141,6 +100,7 @@ Get Ticket
 Handler.get
 → Service.Get
 → Repository.Get
+→ MemoryRepository.Get
 → map
 → Ticket / ErrNotFound
 → Service
@@ -154,447 +114,205 @@ Handler.close
 → Service.Get
 → Repository.Get
 → 状态 / Version 检查
-→ open -> closed
+→ open → closed
+→ Version + 1
 → Repository.Update
 → map
 ```
 
-当前职责理解：
+当前职责模型：
 
 ```text
 Handler
 = HTTP 输入 / 输出适配
 
 Service
-= 当前业务用例负责人，组织步骤、执行业务规则、修改业务状态
+= 当前业务用例负责人；组织步骤、执行业务规则、修改业务状态
 
 Repository
-= Service 读写业务事实的数据访问边界
+= Service 读写业务事实的数据访问边界 / 能力合同
 
 MemoryRepository
-= 当前 Repository 的具体内存实现
+= Repository 的当前内存实现
 ```
 
-已纠正：
+已经纠正：
 
 ```text
-不是 Repository 调真正的业务逻辑
-而是 Service 组织业务逻辑，再调用 Repository 读写数据
+不是 Repository 调业务逻辑
+而是 Service 组织业务逻辑，再调用 Repository 读写事实
 ```
 
 ## MemoryRepository / map
 
-已能沿真实代码理解：
+已能解释：
 
 ```go
 r.tickets[value.ID] = value
+value, ok := r.tickets[id]
 ```
-
-最小模型：
 
 ```text
-map[string]Ticket
-≈ Python dict[str, Ticket]
-
-Create
-= 放入 map
-
-Get
-= 从 map 读取
-
-Update
-= 检查当前值后用新 Ticket 覆盖旧值
+map[string]Ticket ≈ Python dict[str, Ticket]
+Create = 放入 map
+Get = 从 map 读取
+Update = 校验后覆盖当前 Ticket
 ```
 
-已明确：map 在 Go 进程内存中，进程重启数据消失。
+map 属于 Go 进程内存，进程重启数据消失。
 
-## Tenant boundary
+## Tenant / Version / RWMutex
 
-已理解：
-
-```go
-if !ok || value.TenantID != tenantID {
-    return Ticket{}, ErrNotFound
-}
-```
-
-并连接：
+已建立：
 
 ```text
-Authentication
-→ Principal.TenantID
+Principal.TenantID
 → Handler
 → Service
 → Repository tenant scope
 ```
 
-## 返回链 / error
+跨 tenant 查询对外仍可表现为 `ErrNotFound`，避免泄露资源存在性。
 
-已建立：
-
-```text
-调用：Handler → Service → Repository
-返回：Repository → Service → Handler
-```
-
-成功值和 error 都沿调用栈返回。
-
-## Service.Close
-
-已顺过：
+已讲：
 
 ```text
-Get 当前 Ticket
-→ 是否已 closed
-→ expectedVersion 是否有效
-→ 当前 Version 是否匹配
-→ open -> closed
-→ Version + 1
-→ UpdatedAt
-→ Repository.Update
+current.Version vs expectedVersion
+不一致 → ErrVersionConflict
 ```
 
-已经开始真正理解 Service 不是单纯中转层。
+目的是防止旧数据覆盖新数据（lost update / optimistic conflict）。
 
-## Version / optimistic conflict
-
-第一轮模型已建立：
-
-```text
-读数据
-→ 做业务判断
-→ 真正写入
-```
-
-中间别人可能先更新。
-
-因此 Repository 写入前再比较：
-
-```text
-current.Version
-vs
-expectedVersion
-```
-
-不一致：
-
-```text
-→ ErrVersionConflict
-→ 防止旧数据覆盖新数据
-```
-
-已讲 `lost update` / optimistic locking 的真实问题，但尚未进入 PostgreSQL 实现。
-
-## RWMutex / defer
-
-已能沿真实代码解释：
-
-```go
-r.mu.RLock()
-defer r.mu.RUnlock()
-```
-
-```go
-r.mu.Lock()
-defer r.mu.Unlock()
-```
-
-当前最小模型：
-
-```text
-RLock
-= 读锁，多读者可以并行
-
-Lock
-= 写锁，写入时独占
-
-defer Unlock
-= 函数退出前保证释放锁
-```
-
-必须保持区分：
+必须继续区分：
 
 ```text
 RWMutex
 = 当前 Go 进程内共享 map 的并发访问安全
 
 Version
-= 业务层面的旧数据覆盖保护
+= 业务层旧版本覆盖保护
 ```
 
 ---
 
-# 四、当前精确话题：`context.Context`
+# 四、`context.Context`：已经讲到的精确模型
 
-当前已经讲到 L2 初步对话模型，不要从“ctx 是什么缩写”重新开始。
+不要重新从“ctx 是什么缩写”开始。
 
-始终放回：
+## 传播链
 
 ```text
 HTTP Request
-→ Handler
-→ Service
-→ Repository
-```
-
-## 1. Context 当前核心定义
-
-用户当前可以把：
-
-```text
-ctx = context / 上下文
-```
-
-理解成：
-
-> **在当前 HTTP 主线里，ctx 是这次请求的生命周期信号载体 / 生命线。**
-
-必须保留精确修正：
-
-```text
-ctx 不保证请求一定成功
-ctx 负责携带 / 传播请求生命周期状态
-```
-
-当前主要内容：
-
-```text
-cancel
-= 请求被取消
-
-deadline / timeout
-= 时间预算耗尽
-
-request-scoped value
-= 少量随请求传播的信息，例如 Principal
-```
-
-业务参数仍显式传递。
-
-## 2. ctx 从哪里来
-
-真实 Handler：
-
-```go
-h.service.Create(r.Context(), principal.TenantID, input)
-```
-
-当前理解：
-
-```text
-net/http 收到 HTTP Request
-↓
-*http.Request 自带 Request Context
-↓
-Handler 用 r.Context() 取得
-↓
-传给 Service
-↓
-Service 继续传给 Repository
-```
-
-所以：
-
-```text
-r.Context()
+→ r.Context()
 → Handler
 → Service(ctx)
 → Repository(ctx)
+→ 支持 Context 的 DB / downstream API
 ```
 
-不是每层各造一个 Context。
+Context 当前可理解为这次请求的生命周期信号载体 / 取消与时间预算广播线；它不保证业务成功，也不是业务参数袋。
 
-## 3. Authentication / WithValue
-
-已看真实：
+Authentication 已通过：
 
 ```go
 ctx := context.WithValue(r.Context(), principalContextKey{}, principal)
 next.ServeHTTP(w, r.WithContext(ctx))
 ```
 
-当前模型：
+派生子 Context，保留父生命周期关系并附加 Principal。
 
-```text
-父 Request Context
-├─ cancel / deadline
-↓ 派生
-子 Context
-├─ 继续受父生命周期影响
-└─ 附加 Principal
-```
-
-Context value 不是万能业务参数袋。
-
-## 4. `nil`
-
-Go 基础已补：
-
-```text
-nil
-≈ 当前阅读时可类比 Python None
-```
-
-所以：
-
-```text
-err == nil
-= 没有 error
-
-err != nil
-= 有 error
-```
-
-## 5. `ctx.Err()`
-
-仓库真实：
-
-```go
-if err := ctx.Err(); err != nil {
-    return Ticket{}, err
-}
-```
-
-当前理解：
-
-```text
-ctx.Err() == nil
-= Context 当前没有因为取消 / deadline 结束
-
-context.Canceled
-= 被取消
-
-context.DeadlineExceeded
-= 时间预算耗尽
-```
-
-必须区分：
-
-```text
-ErrNotFound / ErrVersionConflict
-= 业务 / 数据语义 error
-
-Canceled / DeadlineExceeded
-= Context 生命周期结束原因
-```
-
-ctx 不是保存所有业务错误的地方。
-
-## 6. `ctx.Done()`
-
-已建立：
+## `Err()` / `Done()`
 
 ```text
 ctx.Err()
-= 现在检查：已经结束了吗？为什么？
+= 现在检查 Context 是否已结束，以及为什么
 
 ctx.Done()
-= 将来结束时通知我
+= 将来结束时的通知
 ```
 
-概念预览过：
-
-```go
-select {
-case <-workDone:
-    // 工作完成
-case <-ctx.Done():
-    return ctx.Err()
-}
-```
-
-当前只理解用途，不代表已经掌握 channel / select。
-
-## 7. Context error 仍走原返回链
+已能区分：
 
 ```text
-Repository
-→ Canceled / DeadlineExceeded
-↑
-Service
-→ 不继续业务逻辑，继续返回 error
-↑
-Handler
-→ 决定 HTTP 如何表达
+context.Canceled
+context.DeadlineExceeded
 ```
 
-当前教学代码的 Handler 尚未专门映射 Context error；不要提前背生产状态码策略。
+和业务错误：
 
-## 8. `WithTimeout` / `WithDeadline`
-
-已讲到：原始 `r.Context()` 不一定带业务想要的明确 deadline。
-
-拿到父 ctx 的代码可以基于它派生子 ctx：
-
-```go
-ctx, cancel := context.WithTimeout(parentCtx, 2*time.Second)
-defer cancel()
+```text
+ErrNotFound
+ErrVersionConflict
 ```
 
-当前理解：
+Context error 仍沿原调用栈返回：
+
+```text
+Repository → Service → Handler
+```
+
+## Timeout / Deadline / cancel
 
 ```text
 WithTimeout
-= 还能活多久
+= 子工作还能活多久
 
 WithDeadline
-= 最晚活到哪个时间点
-```
+= 子工作最晚活到哪个时间点
 
-父子关系：
-
-```text
-父 ctx 先结束
-→ 子 ctx 一起结束
-
-子 timeout/deadline 先到
-→ 子 ctx 自己结束
-```
-
-## 9. `cancel()`
-
-当前最小模型：
-
-```text
 cancel()
-= 主动声明这个派生 Context 对应的工作不再需要继续
+= 创建者主动结束派生 Context / 释放相关资源
 ```
 
-即使 timeout 尚未到，工作提前结束时也应释放派生 Context 相关资源。
+父子关系已建立：
 
-已和：
-
-```go
-Lock()
-defer Unlock()
+```text
+父 ctx 先结束 → 子 ctx 一起结束
+子 timeout/deadline 先到 → 子 ctx 自己结束
+子 cancel 不会反向取消父 ctx
 ```
 
-建立“提前登记清理动作”的类比。
+## 2026-09-03 新增：cancel 来源
 
-但还没有独立写代码。
+已经讲清两类来源：
 
-## 10. Slow Repository 模型
+```text
+A. r.Context()
+Client 断开 / Request 生命周期结束
+→ net/http 管理并取消 Request Context
 
-已讲：
+B. 派生 Context
+WithCancel / WithTimeout 返回 cancel
+→ 创建派生 Context 的代码通常负责 defer cancel()
+```
+
+还明确：
+
+```text
+Context 自己结束
+≠ 普通 Go 代码被强制杀死
+```
+
+Context 发信号；底层代码/API必须支持并响应它。
+
+## Slow Repository / Database
+
+已讲模型：
 
 ```text
 Repository 工作 3 秒
 上游 timeout 1 秒
 ```
 
-错误模型：
+普通：
 
 ```go
 time.Sleep(3 * time.Second)
 ```
 
-只在开始检查一次 `ctx.Err()` 不够，因为 Context 不会魔法强杀普通阻塞代码。
+不会被 Context 自动强杀。
 
-重要结论：
-
-> **Context 发出停止信号；底层代码 / API 必须主动支持和响应它。**
-
-对于慢操作，需要等待：
+支持 Context 的慢操作需要等待：
 
 ```text
 工作完成
@@ -602,130 +320,196 @@ vs
 ctx.Done()
 ```
 
-谁先发生。
-
-## 11. `context.Background()` 断链
-
-已经讲通：
-
-正确：
+真实数据库调用应优先使用类似：
 
 ```go
-s.repository.Get(ctx, tenantID, id)
+db.QueryContext(ctx, ...)
+db.ExecContext(ctx, ...)
 ```
 
-错误主线示例：
+使请求取消 / deadline 有机会传到真正耗资源的 DB 工作。
 
-```go
-s.repository.Get(context.Background(), tenantID, id)
-```
+已理解：如果 DB 已经成功 COMMIT，之后 Context cancel 不会自动撤销已提交事实；这会在 Transaction / Idempotency 阶段继续展开。
 
-当前理解：
+## `context.Background()`
 
-```text
-Background
-= 独立根 Context 的最小阅读模型
-```
-
-如果 Service 丢掉上游 Request ctx：
-
-```text
-Client cancel / request timeout
-↓
-Handler / Service 上游知道
-✂
-Repository 收不到原请求的生命周期结束信号
-```
-
-因此可能继续做无意义工作。
-
-同时已明确：`context.Background()` 不是永远不能用；真正独立于某个 HTTP Request 的根任务可以从根 Context 开始。
+已讲通：在 HTTP Request 主线中无故改成 `context.Background()` 会切断上游 cancel/deadline 传播；但真正独立于 Request 的根任务可以合理使用根 Context。
 
 ---
 
-# 五、当前能力证据判断
+# 五、2026-09-03 新增：Repository interface / 多态 / DI
+
+这是当前刚讲完的新块，不要重新从 interface 定义开始。
+
+## 1. `MemoryRepository` 实现 `Repository`
+
+Go 是隐式实现：
 
 ```text
-HTTP / 网络：L2 初步
-http.Handler / HandlerFunc：L2 初步
-Middleware：L2 初步对话理解，缺实践
-Handler / Service / Repository：L2 对话模型已较完整，缺实践
-MemoryRepository Create/Get/Update：已建立对话理解
-Tenant boundary：已建立对话理解
-Version / optimistic conflict：第一轮模型已建立
-RWMutex / defer：能沿真实代码解释，缺独立实现
-context.Context propagation：L2 初步对话理解
-ctx.Err / Done / nil / Canceled / DeadlineExceeded：可沿真实主线解释
-WithTimeout / WithDeadline / cancel：已建立第一轮模型
-Slow Repository cancellation：概念模型已建立，未运行
-context.Background() 断链：概念模型已建立，未运行
+Repository interface 要求 Create / Get / List / Update
+
+*MemoryRepository 拥有相同签名的方法
+→ 自动满足 Repository
+```
+
+没有 `implements` 关键字。
+
+## 2. Service 依赖接口而不是具体实现
+
+真实结构：
+
+```go
+type Service struct {
+    repository Repository
+}
+```
+
+而不是绑死：
+
+```go
+repository *MemoryRepository
+```
+
+所以 Service 只认“能力合同”，未来可以接：
+
+```text
+MemoryRepository
+PostgresRepository
+FakeRepository
+```
+
+## 3. interface value 里仍保存具体实现
+
+当前阅读模型：
+
+```text
+Repository interface value
+├─ dynamic type  = *MemoryRepository
+└─ dynamic value = 当前具体 MemoryRepository 对象
+```
+
+因此：
+
+```go
+s.repository.Get(...)
+```
+
+虽然静态类型是 `Repository`，当前实际会动态调用：
+
+```text
+(*MemoryRepository).Get(...)
+```
+
+以后注入 `PostgresRepository`，同一行可执行 PostgreSQL 实现。
+
+## 4. 小接口 / 消费者视角
+
+已建立：
+
+> interface 应优先表达“调用方真正需要什么能力”，不是把实现者所有方法全塞进去。
+
+不要把“小接口”机械理解成接口越碎越好；当前 `Service` 确实使用 Create/Get/List/Update，所以当前 Repository 合同仍合理。
+
+## 5. Dependency Injection
+
+已经讲通最基础 DI：
+
+```go
+repository := NewMemoryRepository()
+service := NewService(repository)
+```
+
+含义：
+
+```text
+Service 不自己偷偷 new MemoryRepository
+↓
+外部先创建依赖
+↓
+通过 NewService(repository Repository) 注入
+```
+
+因此启动阶段和请求阶段要区分：
+
+```text
+启动阶段
+= 组装依赖 / Handler 链
+
+请求阶段
+= 使用已组装好的 Service / Repository 处理 Request
+```
+
+---
+
+# 六、当前能力判断
+
+仍以对话理解证据为主：
+
+```text
+HTTP / Router / Auth：L2 初步
+Middleware：L2 初步，缺实践
+Handler / Service / Repository：L2 较完整，缺实践
+MemoryRepository / tenant / Version / RWMutex：可沿真实代码解释
+context.Context propagation / cancel / timeout：L2 初步，缺真实实验
+Repository interface / 动态分派 / DI：L2 初步对话理解
 Go 独立实现：仍缺证据
 ```
 
-仍然不要标 L3。
-
-第 4 章仍缺：
-
-```text
-[ ] 独立完成一个小变化
-[ ] 补 / 改 test
-[ ] 主动制造 conflict / 分层错误并解释
-```
-
-Context 仍缺：
-
-```text
-[ ] 真正实现 Slow Repository
-[ ] timeout / deadline test
-[ ] client cancel test
-[ ] context.Background() 断链对比实验
-```
+不要标 L3。
 
 ---
 
-# 六、换账号后的精确下一步
+# 七、下一次直接从哪里继续
 
-新的老师不要重新讲：
+不要重新讲：
 
 ```text
-Repository 是什么
-Memory map 是什么
+Repository 基础定义
+Memory map 基本动作
 Version / RWMutex 基本模型
-ctx 是什么缩写
-nil 是什么
-ctx.Err() / ctx.Done() 基本区别
-WithTimeout / WithDeadline 基本意义
-Slow Repository 为什么要响应 Context
-context.Background() 为什么会断链
+Context 定义 / Err / Done / timeout / Background 基础
+MemoryRepository 为什么满足 Repository
+interface value 为什么能调用 MemoryRepository.Get
+Dependency Injection 的基本定义
 ```
 
-## 第一问直接从这里开始
+## 推荐下一步
 
-> **cancel 到底是谁触发的？HTTP Request 自身的取消，和 `WithCancel` / `WithTimeout` 返回给我们代码的 `cancel()`，分别是谁负责触发？**
-
-继续沿：
+先把刚讲过的 interface / DI 用一个最小测试场景闭环：
 
 ```text
-Client
-→ HTTP Request
-→ r.Context()
-→ Handler
-→ Service
-→ Repository
+FakeRepository
+→ 注入 Service
+→ 只测试 Service 业务规则
 ```
 
-推荐接下来顺序：
+重点回答：
 
-1. `r.Context()` 在客户端断开、请求结束等情况下，谁负责取消；
-2. `WithCancel` / `WithTimeout` 返回的 `cancel` 是谁调用；
-3. 为什么派生 Context 的创建者通常负责 `defer cancel()`；
-4. 把 Slow Repository 变成可运行实验；
-5. 观察 timeout 时 `Done()` / `Err()`；
-6. 故意改成 `context.Background()`，验证取消链断开；
-7. 补测试，把 Context 从 L2 对话理解推进到 L3 控制能力。
+```text
+为什么测试 Service 不一定需要真的启动 PostgreSQL？
+FakeRepository 最少需要实现哪些 Repository 行为？
+Service 如何完全不知道拿到的是 Fake / Memory / Postgres？
+```
+
+然后立刻回 Context 欠缺的实践证据：
+
+```text
+SlowRepository
++ WithTimeout
++ ctx.Done()/ctx.Err()
++ context.Background() 断链对照
+```
+
+跑完这两组最小实验后，再自然进入：
+
+```text
+Error / Testing
+→ PostgreSQL Repository
+→ Transaction / Idempotency
+```
 
 ---
 
-# 七、给下一位 GPT / Codex 的一句话
+# 八、给下一位老师的一句话
 
-> **用户已经沿 `Handler → Service → Repository` 把第 4 章和 Context 自然接起来：Repository/Memory map/Create/Get/Update、tenant scope、Service.Close、Version/lost update、RWMutex/defer 已形成 L2 对话模型；Context 已讲到 Request ctx 传播、WithValue Principal、nil、Err/Done、Canceled/DeadlineExceeded、WithTimeout/WithDeadline、defer cancel、Slow Repository 取消模型和 `context.Background()` 断链。尚未做独立代码/测试，所以不标 L3。下一次不要复习定义，直接讲“HTTP Request 自动 cancel vs 派生 Context 手动 cancel 是谁触发”，随后做 Slow Repository timeout/cancel/Background 断链实验。教学必须围绕真实 Ticket API 调用链，Go 语法挡住时局部用 Python 类比。**
+> **用户已经沿真实 Ticket API 把 Handler → Service → Repository、MemoryRepository/map、tenant scope、Version/lost update、RWMutex，以及 Context 的 Request 传播、Err/Done、WithTimeout/Deadline、cancel 来源、Slow Repository 与 DB Context 支持讲到 L2；2026-09-03 又把 `MemoryRepository implements Repository`、interface 动态具体类型、消费者视角小接口和最基础 Dependency Injection 讲通。不要回头重讲定义。下一步先用 FakeRepository + Service test 把 interface/DI 变成可验证能力，再做 SlowRepository timeout/Background 断链实验，之后进入 PostgreSQL。**
