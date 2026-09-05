@@ -1,6 +1,6 @@
 # 当前学习接棒点
 
-最后更新：2026-09-03
+最后更新：2026-09-05
 
 这份文件是新的 ChatGPT / Codex / 其他账号继续教学时最优先读取的精确入口。
 
@@ -17,7 +17,8 @@
 - [`2026-08-31.md`](2026-08-31.md)：Repository / MemoryRepository / Version / RWMutex；
 - [`2026-09-01.md`](2026-09-01.md)：Request Context 传播、`Err()` / `Done()`；
 - [`2026-09-01-final.md`](2026-09-01-final.md)：Timeout / Deadline / Slow Repository / `Background()` 断链；
-- [`2026-09-03.md`](2026-09-03.md)：cancel 来源、数据库响应 Context、Repository interface / 多态 / DI。
+- [`2026-09-03.md`](2026-09-03.md)：cancel 来源、数据库响应 Context、Repository interface / 多态 / DI；
+- [`2026-09-05.md`](2026-09-05.md)：**校正：FakeRepository 尚未学习，下一次必须从这里重新开始。**
 
 ---
 
@@ -272,7 +273,7 @@ cancel()
 子 cancel 不会反向取消父 ctx
 ```
 
-## 2026-09-03 新增：cancel 来源
+## cancel 来源
 
 已经讲清两类来源：
 
@@ -297,7 +298,7 @@ Context 发信号；底层代码/API必须支持并响应它。
 
 ## Slow Repository / Database
 
-已讲模型：
+已讲概念模型：
 
 ```text
 Repository 工作 3 秒
@@ -335,11 +336,13 @@ db.ExecContext(ctx, ...)
 
 已讲通：在 HTTP Request 主线中无故改成 `context.Background()` 会切断上游 cancel/deadline 传播；但真正独立于 Request 的根任务可以合理使用根 Context。
 
+**仍缺所有实际 Context 实验和测试。**
+
 ---
 
-# 五、2026-09-03 新增：Repository interface / 多态 / DI
+# 五、Repository interface / 多态 / DI：已学边界
 
-这是当前刚讲完的新块，不要重新从 interface 定义开始。
+这部分已经做过第一轮讲解，不要重新从 interface 定义开始。
 
 ## 1. `MemoryRepository` 实现 `Repository`
 
@@ -364,19 +367,13 @@ type Service struct {
 }
 ```
 
-而不是绑死：
+不是绑死：
 
 ```go
 repository *MemoryRepository
 ```
 
-所以 Service 只认“能力合同”，未来可以接：
-
-```text
-MemoryRepository
-PostgresRepository
-FakeRepository
-```
+当前理解：Service 只依赖 Repository 的能力合同，不关心底层当前具体实现。
 
 ## 3. interface value 里仍保存具体实现
 
@@ -399,8 +396,6 @@ s.repository.Get(...)
 ```text
 (*MemoryRepository).Get(...)
 ```
-
-以后注入 `PostgresRepository`，同一行可执行 PostgreSQL 实现。
 
 ## 4. 小接口 / 消费者视角
 
@@ -429,7 +424,7 @@ Service 不自己偷偷 new MemoryRepository
 通过 NewService(repository Repository) 注入
 ```
 
-因此启动阶段和请求阶段要区分：
+已区分：
 
 ```text
 启动阶段
@@ -441,7 +436,30 @@ Service 不自己偷偷 new MemoryRepository
 
 ---
 
-# 六、当前能力判断
+# 六、重要：`FakeRepository` 明确尚未学习
+
+**不要因为 2026-09-05 的上一条对话已经开始出现 FakeRepository 示例，就把它算作学过。**
+
+用户已明确表示：
+
+> **“用 FakeRepository 测 Service 这个我没学。”**
+
+因此当前状态必须记录为：
+
+```text
+FakeRepository：未学习
+FakeRepository 注入 Service：未学习
+用 Fake 控制 Get 返回 Ticket / error：未学习
+Service unit test：未学习
+用 Fake 记录 Update 调用：未学习
+Fake / Stub / Mock：未学习
+```
+
+下一位老师必须从 FakeRepository 的第一步重新讲，不能直接从更后的测试技巧继续。
+
+---
+
+# 七、当前能力判断
 
 仍以对话理解证据为主：
 
@@ -452,6 +470,7 @@ Handler / Service / Repository：L2 较完整，缺实践
 MemoryRepository / tenant / Version / RWMutex：可沿真实代码解释
 context.Context propagation / cancel / timeout：L2 初步，缺真实实验
 Repository interface / 动态分派 / DI：L2 初步对话理解
+FakeRepository / Service unit test：未学习
 Go 独立实现：仍缺证据
 ```
 
@@ -459,7 +478,7 @@ Go 独立实现：仍缺证据
 
 ---
 
-# 七、下一次直接从哪里继续
+# 八、下一次直接从哪里继续
 
 不要重新讲：
 
@@ -473,25 +492,39 @@ interface value 为什么能调用 MemoryRepository.Get
 Dependency Injection 的基本定义
 ```
 
-## 推荐下一步
+## 第一部分：从零开始讲 `FakeRepository`
 
-先把刚讲过的 interface / DI 用一个最小测试场景闭环：
+**第一问直接从这里开始：**
 
-```text
-FakeRepository
-→ 注入 Service
-→ 只测试 Service 业务规则
-```
+> 为什么我们只想测试 `Service.Close` 的业务规则时，不一定希望真的启动 PostgreSQL / 使用真实数据库？
 
-重点回答：
+然后按这个顺序：
 
 ```text
-为什么测试 Service 不一定需要真的启动 PostgreSQL？
-FakeRepository 最少需要实现哪些 Repository 行为？
-Service 如何完全不知道拿到的是 Fake / Memory / Postgres？
+1. 先说明真实测试问题，不先堆 Fake/Mock/Stub 术语
+2. FakeRepository 是什么
+3. 它为什么也是 Repository interface 的一个具体实现
+4. NewService(fakeRepo) 为什么可以工作
+5. Fake 如何预设 Get 返回 Ticket / error
+6. 用真实 Service.Close 跑一条最小调用链
+7. 再看 Fake 如何记录 Update 调用，验证 open → closed、Version + 1
 ```
 
-然后立刻回 Context 欠缺的实践证据：
+沿真实调用链：
+
+```text
+Test
+→ Service.Close
+→ Repository interface
+→ FakeRepository
+→ 返回受控 Ticket / error
+→ Service 执行业务规则
+→ Test 断言结果
+```
+
+这部分讲完并确认理解后，再做一个最小 Go test。
+
+## 第二部分：补 Context 实践
 
 ```text
 SlowRepository
@@ -500,16 +533,15 @@ SlowRepository
 + context.Background() 断链对照
 ```
 
-跑完这两组最小实验后，再自然进入：
+完成 FakeRepository / Service test 与 Context 实验后，再进入：
 
 ```text
-Error / Testing
-→ PostgreSQL Repository
+PostgreSQL Repository
 → Transaction / Idempotency
 ```
 
 ---
 
-# 八、给下一位老师的一句话
+# 九、给下一位老师的一句话
 
-> **用户已经沿真实 Ticket API 把 Handler → Service → Repository、MemoryRepository/map、tenant scope、Version/lost update、RWMutex，以及 Context 的 Request 传播、Err/Done、WithTimeout/Deadline、cancel 来源、Slow Repository 与 DB Context 支持讲到 L2；2026-09-03 又把 `MemoryRepository implements Repository`、interface 动态具体类型、消费者视角小接口和最基础 Dependency Injection 讲通。不要回头重讲定义。下一步先用 FakeRepository + Service test 把 interface/DI 变成可验证能力，再做 SlowRepository timeout/Background 断链实验，之后进入 PostgreSQL。**
+> **精确边界：用户已经理解 Handler → Service → Repository 主链、MemoryRepository/map、tenant、Version/RWMutex、Context cancel/timeout 概念，以及 `MemoryRepository implements Repository`、interface 动态具体类型、小接口和最基础 Dependency Injection；但用户在 2026-09-05 明确指出 `FakeRepository` 没学。上一位只是刚开始讲，不算学习完成。下一次必须从“为什么测试 Service 不一定启动数据库”开始，从零讲 FakeRepository，并沿真实 `Service.Close` 做最小测试；之后再补 SlowRepository timeout/Background 断链实验。**
